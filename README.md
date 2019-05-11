@@ -4,7 +4,7 @@ Still work-in-progress, but just about there...
 ## Nira Client
 In this repo is a collection of collection of useful client -> server methods for Nira.
 
-Currently, methods are included for uploading files, checking for recently updated assets,
+Currently, methods are included for uploading assets, checking for recently updated assets,
 and checking whether an asset has finished being processed by Nira after upload.
 
 There are two main components:
