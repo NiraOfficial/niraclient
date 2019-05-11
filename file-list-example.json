@@ -1,0 +1,11 @@
+[{
+  "path": "assets/tpot.obj"
+}, {
+  "path": "assets/tpot.mtl"
+}, {
+  "path": "assets/blue.png",
+  "type": "image"
+}, {
+  "path": "assets/photos/tpot-photo01.jpg",
+  "type": "photogrammetry_image"
+}]
