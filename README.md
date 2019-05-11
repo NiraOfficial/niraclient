@@ -1,4 +1,5 @@
-*NOTE* Still work-in-progress. Just about there...
+## NOTE
+Still work-in-progress, but just about there...
 
 ## Nira Client
 In this repo is a collection of collection of useful client -> server methods for Nira.
