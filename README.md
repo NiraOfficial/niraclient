@@ -8,8 +8,10 @@ Currently, methods are included for uploading files, checking for recently updat
 and checking whether an asset has finished being processed by Nira after upload.
 
 There are two main components:
-*niracmd.py*: A commandline nira client that utilizes `niraclient.py` for some common tasks like asset uploads. Run it with `--help` for usage details.
-*niraclient.py*: Includes the API calls themselves. Inline documentation can be found in the file.
+#### niracmd.py
+A commandline nira client that utilizes `niraclient.py` for some common tasks like asset uploads. Run it with `--help` for usage details.
+#### niraclient.py
+Includes the API calls themselves. Inline documentation can be found in the file.
 
 ## Dependencies
 Both python2/python3 are supported.
