@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2019 Nira, Inc. - All Rights Reserved
+# Copyright (C) 2019 Nira, Inc. - All Rights Reserved
 
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -14,24 +14,29 @@ class NiraClient:
   whether an asset has finished being processed by Nira, and a few other things.
   """
 
-  def __init__(self, niraurl, apikey):
+  def __init__(self, url, apiKey, userEmail = ''):
     """
     Constructor.
 
     Args:
-    niraurl(string): A base URL to a Nira server, such as "https://example.nira.app".
-    apikey(string): An API key
+    url(string): A base URL to a Nira server, such as "https://example.nira.app".
+    apiKey(string): An API key
+    userEmail(string): Specifies the user account that certain API operations occur under.
+                       For example, if an asset upload is performed, that user's name will appear
+                       in the "Uploader" column of Nira's asset listing page. If this argument is
+                       unspecified, the first admin user found in the database will be used.
     """
-    self.niraurl = niraurl
-    self.apikey = apikey
-    self.userId = 0
+    self.url = url
+    self.apiKey = apiKey
+    self.userEmail = userEmail
 
-    if not self.niraurl.endswith("/"):
-      self.niraurl += "/"
+    if not self.url.endswith("/"):
+      self.url += "/"
 
-    self.headerParams = {
-        'x-api-key': self.apikey,
-        }
+    self.headerParams = {}
+    self.headerParams['x-api-key'] = self.apiKey;
+    if self.userEmail:
+      self.headerParams['x-user-email'] = self.userEmail;
 
   def getUserByEmail(self, email):
     """
@@ -46,7 +51,7 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    markupsEndpoint = self.niraurl + "users"
+    markupsEndpoint = self.url + "users"
 
     userQueryParams = {
         'email': email,
@@ -62,20 +67,6 @@ class NiraClient:
     else:
       return []
 
-  def setUserById(self, userId):
-    """
-    Specifies the user account that API operations occur under.
-    For example, if after calling setUserById an asset upload is performed,
-    that user's name will appear in the "Uploader" column of Nira's asset listing page.
-
-    Args:
-      id (int): numeric id of the user account you wish to use for later API calls.
-
-    Returns:
-      void
-    """
-    self.userId = userId
-
   def getAssetsUpdatedSince(self, since):
     """
     Returns all assets updated since a certain timestamp value.
@@ -90,7 +81,7 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    markupsEndpoint = self.niraurl + "assets"
+    markupsEndpoint = self.url + "assets"
 
     assetQueryParams = {
         '$groupByFile': "true",
@@ -116,7 +107,7 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    jobEndpoint   = self.niraurl + "jobs" + "/" + str(jobId)
+    jobEndpoint   = self.url + "jobs" + "/" + str(jobId)
     r = requests.get(url = jobEndpoint, headers=self.headerParams)
     r.raise_for_status()
 
@@ -173,15 +164,14 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    jobsEndpoint   = self.niraurl + "jobs"
-    assetsEndpoint = self.niraurl + "assets"
+    jobsEndpoint   = self.url + "jobs"
+    assetsEndpoint = self.url + "assets"
 
     batchUuid = str(uuid.uuid4())
 
     jobCreateParams = {
         'status': "validating",
         'batchId': batchUuid,
-        'createdBy': self.userId,
         }
 
     r = requests.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
@@ -200,7 +190,6 @@ class NiraClient:
           'uuid': assetUuid,
           'parentAssetpathId': parentAssetpathId,
           'jobId': job['id'],
-          'createdBy': self.userId,
           }
 
       r = requests.post(url = assetsEndpoint, data=assetCreateParams, headers=self.headerParams)
@@ -220,8 +209,11 @@ class NiraClient:
           }
         )
 
-      response = requests.post('http://localhost:3030/asset-uploads', data=multipart_data,
-        headers={'x-api-key': self.apikey, 'Content-Type': multipart_data.content_type})
+      headers = {}
+      headers.update(self.headerParams)
+      headers['Content-Type'] = multipart_data.content_type
+      response = requests.post(self.url + 'asset-uploads', data=multipart_data,
+        headers=headers)
 
     jobPatchParams = {
         'status': "uploaded",
@@ -232,7 +224,7 @@ class NiraClient:
     assetJob = r.json()
 
     uploadInfo = NiraUploadInfo()
-    uploadInfo.assetUrl = self.niraurl + "a/" + assets[0]['urlUuid']
+    uploadInfo.assetUrl = self.url + "a/" + assets[0]['urlUuid']
     uploadInfo.assetJobId = assetJob['id']
     uploadInfo.assets = assets
 

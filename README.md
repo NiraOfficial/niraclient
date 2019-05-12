@@ -4,7 +4,7 @@ Still work-in-progress, but just about there...
 ## Nira Client
 In this repo is a collection of collection of useful client -> server methods for Nira.
 
-Currently, methods are included for uploading assets, checking for recently updated assets (e.g. newly uploaded or updated markups), and checking whether an asset has finished being processed by Nira after upload.
+Currently, methods are included for uploading assets, checking for recently updated assets (i.e. assets that are newly uploaded, have new markups, or have recent approval status changes), and checking whether an asset has finished being processed by Nira after upload.
 
 There are two main components:
 #### niraclient.py
@@ -22,12 +22,12 @@ pip install requests_toolbelt
 
 
 ## CLI Usage examples
-Upload sphere.ma, sphere_texture_1.tga, sphere_texture_2.tga, then wait for the asset to finish processing on the server (timeout after 300 seconds):
+As user admin@example.org, upload sphere.ma, red.png, and blue.png, then wait for the asset to finish processing on the server (timeout after 300 seconds):
 ```
-python niracmd.py --useremail "admin@example.org" --niraurl "http://example.nira.app:3030" --apikey ccf0d30a-312a-4d09-8a4b-dd70c40e2a9a --upload "/home/dev/sphere.ma" "/home/dev/sphere_texture_1.tga" "/home/dev/sphere_texture_2.tga" --wait-for-asset-processing 300
+python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --upload "assets/sphere.ma" "assets/red.png" "assets/blue.png" --wait-for-asset-processing 300
 ```
 
 List records (in JSON) of any assets updated within the last 5 minutes:
 ```
-python niracmd.py --useremail "admin@example.org" --niraurl "http://localhost:3030" --apikey ccf0d30a-312a-4d09-8a4b-dd70c40e2a9a --list-assets-updated-within 300
+python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --list-assets-updated-within 300
 ```
