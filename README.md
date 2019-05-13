@@ -22,9 +22,9 @@ pip install requests_toolbelt
 
 
 ## CLI Usage examples
-As user admin@example.org, upload sphere.ma, red.png, and blue.png, then wait for the asset to finish processing on the server (timeout after 300 seconds):
+As user admin@example.org, upload ball.ma, red.png, and blue.png, then wait for the asset to finish processing on the server (timeout after 300 seconds):
 ```
-python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --upload "assets/sphere.ma" "assets/red.png" "assets/blue.png" --wait-for-asset-processing 300
+python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --upload "assets/ball.ma" "assets/red.png" "assets/blue.png" --wait-for-asset-processing 300
 ```
 
 List records (in JSON) of any assets updated within the last 5 minutes:

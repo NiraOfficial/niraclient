@@ -4,7 +4,17 @@ import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 import uuid
 import os
+from datetime import datetime
 import time
+
+def isoUtcDateParse(isoDateStr):
+  """
+  Parses a UTC ISO-8601 date/time string to a datetime object.
+
+  Args:
+  isoDateStr(string): A UTC ISO-8601 date/time string of the following form: "2019-05-13T04:14:53.163Z"
+  """
+  return datetime.strptime(isoDateStr, '%Y-%m-%dT%H:%M:%S.%fZ')
 
 class NiraClient:
   """
@@ -70,10 +80,10 @@ class NiraClient:
   def getAssetsUpdatedSince(self, since):
     """
     Returns all assets updated since a certain timestamp value.
-    Assets get updated upon upload or when a new markup is created for that asset.
+    Assets get updated upon upload, when a new markup is created for that asset, or upon status change.
 
     Args:
-      since (int): Timestamp value (seconds since epoch, UTC). Assets updated after this timestamp will be returned.
+      since (datetime object in UTC): Assets updated after this datetime will be returned. Must be in UTC.
 
     Returns:
       List of asset records that were updated at some point after the provided timestamp value
@@ -83,10 +93,11 @@ class NiraClient:
     """
     markupsEndpoint = self.url + "assets"
 
+    updatedSince = since.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
     assetQueryParams = {
         '$groupByFile': "true",
         '$paginate': "false",
-        '$updatedSince': since,
+        '$updatedSince': updatedSince,
       }
 
     r = requests.get(url = markupsEndpoint, params=assetQueryParams, headers=self.headerParams)
@@ -156,7 +167,7 @@ class NiraClient:
 
     Args:
       assetpaths: List of full paths to each file. The primary asset file (e.g. .ma, .mb, .zpr, .obj file) must be first in the list.
-                  Accompanying texture/material files (optional) go after that. Use absolute paths for all files.
+                  Accompanying texture/material files (optional) go after that. Paths can be absolute or relative to the runtime directory.
 
     Returns:
       A `NiraUploadInfo` object
@@ -224,11 +235,14 @@ class NiraClient:
     assetJob = r.json()
 
     uploadInfo = NiraUploadInfo()
-    uploadInfo.assetUrl = self.url + "a/" + assets[0]['urlUuid']
+    uploadInfo.assetUrl = self.formatAssetUrl(assets[0]['urlUuid'])
     uploadInfo.assetJobId = assetJob['id']
     uploadInfo.assets = assets
 
     return uploadInfo
+
+  def formatAssetUrl(self, urlUuid):
+    return self.url + "a/" + urlUuid
 
 class NiraUploadInfo:
   """
