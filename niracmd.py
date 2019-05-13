@@ -93,7 +93,7 @@ try:
     assets = nirac.getAssetsUpdatedSince(sinceDate)
     formattedUpdates = formatAssetUpdates(assets, sinceDate)
     for formattedUpdate in formattedUpdates:
-      print formattedUpdate
+      print(formattedUpdate)
   elif args.update_seconds:
     lastUpdateTime = datetime.datetime.utcnow()
 
@@ -103,7 +103,7 @@ try:
       formattedUpdates = formatAssetUpdates(assets, lastUpdateTime)
 
       for formattedUpdate in formattedUpdates:
-        print formattedUpdate
+        print(formattedUpdate)
 
       time.sleep(args.update_seconds)
       lastUpdateTime = updateTime
