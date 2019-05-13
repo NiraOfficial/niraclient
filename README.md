@@ -5,7 +5,7 @@ Currently, methods are included for uploading assets, checking for recently upda
 
 There are two main components:
 #### niraclient.py
-Includes the API calls themselves. Inline documentation can be found in the file. Documentation of the class can be found at https://apidocs.nira.app/niraclient.html
+Includes the API calls themselves. Inline documentation can be found in the file. HTML documentation of the class can be found at https://apidocs.nira.app/niraclient.html
 #### niracmd.py
 A commandline nira client that utilizes `niraclient.py` for some common tasks like asset uploads. Run it with `--help` for usage details.
 
