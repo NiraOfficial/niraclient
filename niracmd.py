@@ -13,10 +13,10 @@ parser.add_argument('--url', required=True, type=str)
 parser.add_argument('--useremail', type=str, default='', help="Specifies the user account that certain API operations occur under. For example, if an asset upload is performed, that user's name will appear in the `Uploader` column of Nira's asset listing page. If this argument is not provided, the first admin user found in the user database will be used.")
 
 group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='A list of asset paths to upload and prints a URL for the asset')
-parser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='If specified, when using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If this argument is not provided, the command will return immediately after upload, and asset processing may not have finished yet. If an error occurs, the command will exit with a non-zero status.')
-group.add_argument('--show-updated-assets-every', dest='update_seconds', default=0, type=int, help='Polls the server every UPDATE_SECONDS, showing any asset updates that have occurred since the last poll.')
-group.add_argument('--show-updated-assets-within', dest='seconds_ago', default=0, type=int, help='Show asset updates that have occurred within SECONDS_AGO')
+group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
+parser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='If specified, when using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If this argument is not provided, the command will return immediately after upload, and asset processing may not have finished yet. If an error occurs, the command will exit with a non-zero status and print an error message.')
+group.add_argument('--show-updated-assets-every', dest='update_seconds', default=0, type=int, help='Polls the server every UPDATE_SECONDS, showing any asset updates that have occurred since the last poll. The command does not exit unless it encounters an error or is interrupted by the user.')
+group.add_argument('--show-updated-assets-within', dest='seconds_ago', default=0, type=int, help='Show any asset updates that have occurred within SECONDS_AGO, then exit.')
 
 args = parser.parse_args()
 
