@@ -1,11 +1,15 @@
-# Copyright (C) 2019 Nira, Inc. - All Rights Reserved
+# Copyright (C) Nira, Inc. - All Rights Reserved
 
 import requests
-from requests_toolbelt.multipart.encoder import MultipartEncoder
 import uuid
 import os
 from datetime import datetime
 import time
+import math
+import multiprocessing.dummy as mp
+import threading
+
+tls = threading.local()
 
 def isoUtcDateParse(isoDateStr):
   """
@@ -24,7 +28,7 @@ class NiraClient:
   whether an asset has finished being processed by Nira, and a few other things.
   """
 
-  def __init__(self, url, apiKey, userEmail = ''):
+  def __init__(self, url, apiKey, userEmail = '', uploadThreadCount = 4, uploadChunkSize = 1024 * 1024 * 10):
     """
     Constructor.
 
@@ -39,6 +43,8 @@ class NiraClient:
     self.url = url
     self.apiKey = apiKey
     self.userEmail = userEmail
+    self.uploadThreadCount = uploadThreadCount
+    self.uploadChunkSize = uploadChunkSize
 
     if not self.url.endswith("/"):
       self.url += "/"
@@ -127,8 +133,8 @@ class NiraClient:
   def waitForAssetProcessing(self, assetJobId, timeoutSeconds = 600):
     """
     Polls the server until the asset is processed, then returns its status.
-    For smaller assets (<100MB), this usually happens within a few seconds.
-    For very large assets (e.g. Multi-GB zbrush files), it could take a couple minutes.
+    For smaller assets (OBJ files less than a few hundred GB), this usually happens within a few seconds.
+    For very large assets (e.g. Multi-GB zbrush files or large OBJ sequences), it could take a couple minutes.
 
     Args:
       assetJobId (int): The numeric id of the asset job. This can be found in the asset record returned from uploadAsset.
@@ -160,6 +166,114 @@ class NiraClient:
       time.sleep(sleepTime)
 
     return NiraJobStatus.TimedOut
+
+  def getAssetManifest(self, assetUrlOrShortUuid):
+    """
+    Given an asset's short UUID or URL, download and return the asset's manifest JSON.
+    An asset's manifest contains information about the asset and all of its accompanying assets (textures, etc).
+    The asset's scene file (e.g. obj, fbx, ma, usd) will always be first in the manifest. Here's an example manifest::
+      [
+        {
+          'path': 'tpot.obj',
+          'version': 1,
+          'type': 'scene',
+          'id': 223
+        },
+        {
+          'path': 'texture.png',
+          'version': 1,
+          'type': 'image',
+          'id': 226
+        },
+      ]
+
+    Args:
+      assetUrlOrShortUuid (string):
+                                    The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                                    For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
+                                    https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
+                                    If you specify a full URL, this function will extract the short UUID for you.
+
+      destDir:
+                                    Directory to hold the asset files. This function will attempt to create the directory if it doesn't already exist.
+
+    Returns:
+      The manifest (dict). Upon failure, False
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+
+    """
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.")
+      return False
+
+    manifestEndpoint   = self.url + "asset-manifest"
+    manifestParams = {
+        'asset_suuid': shortUuid,
+        }
+
+    r = requests.get(url = manifestEndpoint, params=manifestParams, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def downloadAsset(self, assetUrlOrShortUuid, destDir):
+    """
+    Given an asset's short UUID or URL, download the asset file and all of its accompanying files from Nira into the specified directory.
+
+    Args:
+      shortUuid: The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                 For example, the short UUID of the following asset URL is `5R5VuRFkSs21FK8CddXM9Q`:
+                 `https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q`
+
+                 If you specify a full URL, this function will extract the short UUID for you.
+
+      destDir:   Directory to hold the asset files. This function will attempt to create the directory if it doesn't already exist.
+
+    Returns:
+      Success or Failure (boolean)
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+    """
+
+    manifest = self.getAssetManifest(assetUrlOrShortUuid)
+    if manifest == False:
+      return False
+
+    if (not os.path.exists(destDir)):
+      os.mkdir(destDir)
+
+    if (not os.path.isdir(destDir)):
+      print ("Directory could not be created: " + destDir)
+      return False
+
+    for asset in manifest:
+      localFilepath = os.path.join(destDir, asset['path'])
+
+      if (os.path.exists(localFilepath)):
+        print ("Skipping download of:" + asset['path'] + "! Destination already exists:" + localFilepath)
+        continue
+
+      downloadParams = {
+          'asset_id': asset['id'],
+          'asset_version': asset['version'],
+          }
+
+      # stream=True for efficient memory usage
+      r = requests.get(url = downloadEndpoint, params=downloadParams, headers=self.headerParams, stream=True)
+      r.raise_for_status()
+
+      print ("Writing file:" + localFilepath + " of length:" + str(len(r.content)))
+
+      with open(localFilepath, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1048576):
+          if chunk:
+            f.write(chunk)
+            # f.flush()
 
   def uploadAsset(self, assetpaths):
     """
@@ -211,20 +325,58 @@ class NiraClient:
       if not parentAssetpathId:
         parentAssetpathId = asset['id']
 
-      multipart_data = MultipartEncoder(
+      totalsize = os.path.getsize(filePath)
+      totalparts = (totalsize//self.uploadChunkSize) + 1
+      #print ("totalparts: " + str(totalparts))
+
+      def sendChunk(partidx):
+        chunkoffset = partidx * self.uploadChunkSize
+
+        if not hasattr(tls, 'fh'):
+          tls.fh = open(filePath, 'rb')
+
+        tls.fh.seek(chunkoffset)
+        chunk = tls.fh.read(self.uploadChunkSize)
+
+        if not chunk:
+          return
+
         fields={
           'qquuid': assetUuid,
+          'qqchunksize': str(len(chunk)),
           'qqfilename': fileName,
-          'qqtotalfilesize': str(os.path.getsize(filePath)),
-          'qqfile': (fileName, open(filePath, 'rb'), 'text/plain'),
+          'qqpartindex': str(partidx),
+          'qqpartbyteoffset': str(chunkoffset),
+          'qqtotalparts': str(totalparts),
+          'qqtotalfilesize': str(totalsize),
           }
-        )
+
+        files={ 'qqfile': (fileName, chunk) }
+
+        headers = {}
+        headers.update(self.headerParams)
+        response = requests.post(self.url + 'asset-uploads', data=fields, files=files, headers=headers)
+
+      def closeHandles(threadid):
+        if hasattr(tls, 'fh'):
+          tls.fh.close()
+          delattr(tls, 'fh')
+
+      p = mp.Pool(self.uploadThreadCount)
+      p.map(sendChunk, range(0, totalparts))
+      p.map(closeHandles, range(0, self.uploadThreadCount * 4))
+      p.close()
+      p.join()
 
       headers = {}
       headers.update(self.headerParams)
-      headers['Content-Type'] = multipart_data.content_type
-      response = requests.post(self.url + 'asset-uploads', data=multipart_data,
-        headers=headers)
+      payload={
+          'qquuid': assetUuid,
+          'qqfilename': fileName,
+          'qqtotalfilesize': str(totalsize),
+          'qqtotalparts': str(totalparts),
+          }
+      response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
 
     jobPatchParams = {
         'status': "uploaded",

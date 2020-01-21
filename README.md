@@ -28,3 +28,8 @@ List information about updated assets every 30 seconds:
 ```
 python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --show-updated-assets-every 30
 ```
+
+Download asset with short UUID `V9hsnMpvRU2jBLQVhg-8eA` including all of its accompanying assets (textures, etc.) to the directory /home/bob/tpot-asset:
+```
+python ./niracmd.py --useremail "admin@example.org" --url http://example.nira.app --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --download V9hsnMpvRU2jBLQVhg-8eA /home/bob/tpot-asset
+```

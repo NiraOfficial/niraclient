@@ -1,4 +1,6 @@
-# Copyright (C) 2019 Nira, Inc. - All Rights Reserved
+#!/usr/bin/env python
+#
+# Copyright (C) Nira, Inc. - All Rights Reserved
 
 import time, sys
 from niraclient import NiraClient, NiraUploadInfo, NiraJobStatus, isoUtcDateParse
@@ -11,16 +13,19 @@ parser = argparse.ArgumentParser(description='Nira Client CLI')
 parser.add_argument('--apikey', required=True, type=str)
 parser.add_argument('--url', required=True, type=str)
 parser.add_argument('--useremail', type=str, default='', help="Specifies the user account that certain API operations occur under. For example, if an asset upload is performed, that user's name will appear in the `Uploader` column of Nira's asset listing page. If this argument is not provided, the first admin user found in the user database will be used.")
+parser.add_argument('--upload-threads', dest='uploadthreads', type=int, default=4, help="Number of simultaneous upload connection threads to use. Using mulitple simultaneous connections for uploads can accelerate them significantly, particularly over long-distance WAN links.")
+parser.add_argument('--upload-chunk-size', dest='uploadchunksize', type=int, default=1024 * 1024 * 10, help="Size of each uploaded chunk, in bytes. When uploading, files will be divided into chunks of this size and sent to the Nira server using the number of threads specified by the --upload-threads option.")
 
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
+group.add_argument('--download', dest="download", default=[], nargs=2, type=str, help='Takes two parameters: An asset\'s URL (or the asset\'s short UUID) and a local destination folder to store the asset. The asset and all of its accompanying assets will be downloaded into this folder.')
 parser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='If specified, when using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If this argument is not provided, the command will return immediately after upload, and asset processing may not have finished yet. If an error occurs, the command will exit with a non-zero status and print an error message.')
 group.add_argument('--show-updated-assets-every', dest='update_seconds', default=0, type=int, help='Polls the server every UPDATE_SECONDS, showing any asset updates that have occurred since the last poll. The command does not exit unless it encounters an error or is interrupted by the user.')
 group.add_argument('--show-updated-assets-within', dest='seconds_ago', default=0, type=int, help='Show any asset updates that have occurred within SECONDS_AGO, then exit.')
 
 args = parser.parse_args()
 
-nirac = NiraClient(args.url, args.apikey, args.useremail)
+nirac = NiraClient(args.url, args.apikey, userEmail=args.useremail, uploadThreadCount=args.uploadthreads, uploadChunkSize=args.uploadchunksize)
 
 def formatAssetUpdates(assetsData, lastUpdateTime):
   formattedAssetUpdates = []
@@ -88,6 +93,8 @@ try:
     else:
       print(uploadInfo.assetUrl)
       sys.exit(0)
+  elif len(args.download) == 2:
+    nirac.downloadAsset(args.download[0], args.download[1])
   elif args.seconds_ago:
     sinceDate = datetime.datetime.utcnow() - datetime.timedelta(seconds=args.seconds_ago)
     assets = nirac.getAssetsUpdatedSince(sinceDate)
