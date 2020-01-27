@@ -12,12 +12,6 @@ A commandline nira client that utilizes `niraclient.py` for some common tasks li
 ## Dependencies
 Both python2/python3 are supported.
 
-The only python dependency is `requests_toolbelt`:
-```
-pip install requests_toolbelt
-```
-
-
 ## CLI Usage examples
 As user admin@example.org, upload ball.ma, red.png, and blue.png, then wait for the asset to finish processing on the server (timeout after 300 seconds):
 ```
