@@ -13,7 +13,7 @@ Includes the API calls themselves. Inline documentation can be found in the file
 A commandline nira client that utilizes `niraclient.py` for some common tasks like asset uploads. Run it with `--help` for usage details.
 
 ## Dependencies
-Both python2/python3 are supported.
+Both python2/python3 are supported. You may need to install the `requests` module by running `pip install requests` or the equivalent on your OS and python installation.
 
 ## CLI Usage examples
 As user admin@example.org, upload ball.ma, red.png, and blue.png, then wait for the asset to finish processing on the server (timeout after 300 seconds):
