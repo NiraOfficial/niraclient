@@ -234,11 +234,13 @@ class NiraClient:
       destDir:   Directory to hold the asset files. This function will attempt to create the directory if it doesn't already exist.
 
     Returns:
-      Success or Failure (boolean)
+      sceneFilepath (string) and material state (dict)
 
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
+
+    downloadEndpoint   = self.url + "asset-dl"
 
     manifest = self.getAssetManifest(assetUrlOrShortUuid)
     if manifest == False:
@@ -251,15 +253,24 @@ class NiraClient:
       print ("Directory could not be created: " + destDir)
       return False
 
-    for asset in manifest:
+    sceneFilepath = False
+
+    #print ("asset manifest: " + str(manifest))
+
+    for asset in manifest['assets']:
       localFilepath = os.path.join(destDir, asset['path'])
+
+      if not sceneFilepath:
+        sceneFilepath = localFilepath
+
+      #print ("Attempting download of:" + asset['path'] + " with asset id/version:  " + )
 
       if (os.path.exists(localFilepath)):
         print ("Skipping download of:" + asset['path'] + "! Destination already exists:" + localFilepath)
         continue
 
       downloadParams = {
-          'asset_id': asset['id'],
+          'assetpath_id': asset['id'],
           'asset_version': asset['version'],
           }
 
@@ -274,6 +285,9 @@ class NiraClient:
           if chunk:
             f.write(chunk)
             # f.flush()
+
+    state = manifest['state']
+    return sceneFilepath, state
 
   def uploadAsset(self, assetpaths):
     """
