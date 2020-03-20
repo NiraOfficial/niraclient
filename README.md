@@ -3,7 +3,7 @@ In this repo is a collection of useful client -> server methods for Nira (niracl
 
 Currently, functions and command-line capabilities are included for:
 * Uploading assets - Useful for uploading assets from existing tools such as Perforce, Shotgun, etc. [Here's a Perforce Integration Example](https://www.youtube.com/watch?v=AhfdoJv1TP0)
-* Downloading assets - Useful for importing assets into existing tools such as Maya, Unity, etc. [Here's a Maya example](https://www.youtube.com/watch?v=JG06Uf8nUCg)
+* Downloading assets - Useful for importing assets into existing tools such as Maya, Unity, etc. [Here's a Maya example](https://www.youtube.com/watch?v=JG06Uf8nUCg). Note, asset downloading is optional and can be completely disabled for your Nira instance if you'd prefer.
 * Checking for recently updated assets - Assets that are newly uploaded, have new markups, or have recent approval status changes. Useful for setting up automated notifications for artists or directors.
 
 As mentioned, there are two main components:
