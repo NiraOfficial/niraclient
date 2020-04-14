@@ -30,3 +30,9 @@ Download asset with short UUID `V9hsnMpvRU2jBLQVhg-8eA` including all of its acc
 ```
 python ./niracmd.py --useremail "admin@example.org" --url http://example.nira.app --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --download V9hsnMpvRU2jBLQVhg-8eA /home/bob/tpot-asset
 ```
+
+As user admin@example.org, upload cube0001.obj through cube0006.obj and cube0001.png through cube0006.png as a playback sequence (aka Volumetric Video, 4D Video, etc), then wait for the asset to finish processing on the server (timeout after 300 seconds).
+This command also enables texture compression, which is highly recommended for sequences. The naming scheme for the geometry files and texture files should match. For example, cube0001.obj will be matched to cube0001.png. It is also acceptable to have cube0001.obj and cube0001.obj.png.
+```
+python niracmd.py --useremail "admin@example.org" --url "https://example.nira.app" --apikey 942a76b6-5aca-4c83-b686-630ef54ded0d --upload assets/sequence/cube*.obj assets/sequence/cube*.png --is-sequence --compress-textures --wait-for-asset-processing 300
+```

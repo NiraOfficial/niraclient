@@ -289,7 +289,7 @@ class NiraClient:
     state = manifest['state']
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths):
+  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -311,6 +311,7 @@ class NiraClient:
     jobCreateParams = {
         'status': "validating",
         'batchId': batchUuid,
+        'textureCompression': "BC1" if compressTextures else "none",
         }
 
     r = requests.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
@@ -324,11 +325,14 @@ class NiraClient:
       fileName = os.path.basename(assetpath)
       filePath = assetpath
 
+
+
       assetCreateParams = {
           'fileName': fileName,
           'uuid': assetUuid,
           'parentAssetpathId': parentAssetpathId,
           'jobId': job['id'],
+          'isSequence': isSequence,
           }
 
       r = requests.post(url = assetsEndpoint, data=assetCreateParams, headers=self.headerParams)

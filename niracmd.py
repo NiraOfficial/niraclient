@@ -19,6 +19,8 @@ parser.add_argument('--upload-chunk-size', dest='uploadchunksize', type=int, def
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
 group.add_argument('--download', dest="download", default=[], nargs=2, type=str, help='Takes two parameters: An asset\'s URL (or the asset\'s short UUID) and a local destination folder to store the asset. The asset and all of its accompanying assets will be downloaded into this folder.')
+parser.add_argument('--is-sequence', action='store_true', dest='is_sequence', help='If specified, when using --upload, defines that the assets are part of an animated sequence.')
+parser.add_argument('--compress-textures', action='store_true', dest='compress_textures', help='If specified, when using --upload, compresses textures on the server.')
 parser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='If specified, when using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If this argument is not provided, the command will return immediately after upload, and asset processing may not have finished yet. If an error occurs, the command will exit with a non-zero status and print an error message.')
 group.add_argument('--show-updated-assets-every', dest='update_seconds', default=0, type=int, help='Polls the server every UPDATE_SECONDS, showing any asset updates that have occurred since the last poll. The command does not exit unless it encounters an error or is interrupted by the user.')
 group.add_argument('--show-updated-assets-within', dest='seconds_ago', default=0, type=int, help='Show any asset updates that have occurred within SECONDS_AGO, then exit.')
@@ -80,7 +82,7 @@ def formatAssetUpdates(assetsData, lastUpdateTime):
 
 try:
   if len(args.asset_path) > 0:
-    uploadInfo = nirac.uploadAsset(args.asset_path)
+    uploadInfo = nirac.uploadAsset(args.asset_path, isSequence=args.is_sequence, compressTextures=args.compress_textures)
 
     if args.wait_max_seconds > 0:
       processingStatus = nirac.waitForAssetProcessing(uploadInfo.assetJobId, timeoutSeconds = args.wait_max_seconds)
