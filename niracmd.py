@@ -2,12 +2,14 @@
 #
 # Copyright (C) Nira, Inc. - All Rights Reserved
 
+from __future__ import print_function
 import time, sys
 from niraclient import NiraClient, NiraUploadInfo, NiraJobStatus, isoUtcDateParse
 import argparse
 import requests
 import datetime
 import traceback
+import json
 
 parser = argparse.ArgumentParser(description='Nira Client CLI')
 parser.add_argument('--apikey', required=True, type=str)
@@ -19,6 +21,9 @@ parser.add_argument('--upload-chunk-size', dest='uploadchunksize', type=int, def
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
 group.add_argument('--download', dest="download", default=[], nargs=2, type=str, help='Takes two parameters: An asset\'s URL (or the asset\'s short UUID) and a local destination folder to store the asset. The asset and all of its accompanying assets will be downloaded into this folder.')
+group.add_argument('--set-metadata', dest="set_metadata_asset_url", default='', type=str, help='Takes an asset\'s URL (or the asset\'s short UUID), reads metadata JSON from stdin, and attaches this metadata to the asset on the Nira server. Also see --metadata-level.')
+group.add_argument('--get-metadata', dest="get_metadata_asset_url", default='', type=str, help='Takes an asset\'s URL (or the asset\'s short UUID) and returns metadata for the asset or assetversion. Also see --metadata-level.')
+parser.add_argument('--metadata-level', dest='metadata_level', choices=["assetversion", "asset"], default='assetversion', help='When using --set-metadata or --get-metadata, specifying "--metadata-level assetversion" or "--metadata-level asset" controls whether to set/retrieve the metadata attached to the assetversion specified, or the entire asset.')
 parser.add_argument('--is-sequence', action='store_true', dest='is_sequence', help='If specified, when using --upload, defines that the assets are part of an animated sequence.')
 parser.add_argument('--compress-textures', action='store_true', dest='compress_textures', help='If specified, when using --upload, compresses textures on the server.')
 parser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='If specified, when using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If this argument is not provided, the command will return immediately after upload, and asset processing may not have finished yet. If an error occurs, the command will exit with a non-zero status and print an error message.')
@@ -95,6 +100,14 @@ try:
     else:
       print(uploadInfo.assetUrl)
       sys.exit(0)
+  elif len(args.set_metadata_asset_url):
+    metadataStr = ''
+    for line in sys.stdin:
+      metadataStr += line.rstrip()
+    nirac.setAssetMetadata(args.set_metadata_asset_url, args.metadata_level, metadataStr)
+  elif len(args.get_metadata_asset_url):
+    metadataDict = nirac.getAssetMetadata(args.get_metadata_asset_url, args.metadata_level)
+    print(json.dumps(metadataDict))
   elif len(args.download) == 2:
     nirac.downloadAsset(args.download[0], args.download[1])
   elif args.seconds_ago:
@@ -118,11 +131,11 @@ try:
       lastUpdateTime = updateTime
 
 except requests.exceptions.HTTPError as error:
-  print(error)
-  print(error.response.text)
+  print(error, file=sys.stderr)
+  print(error.response.text, file=sys.stderr)
   sys.exit(1)
 except (KeyboardInterrupt, SystemExit):
   raise
 except Exception as e:
-  print(traceback.format_exc())
+  print(traceback.format_exc(), file=sys.stderr)
   sys.exit(1)

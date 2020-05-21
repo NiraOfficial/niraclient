@@ -1,5 +1,6 @@
 # Copyright (C) Nira, Inc. - All Rights Reserved
 
+from __future__ import print_function
 import requests
 import uuid
 import os
@@ -8,6 +9,7 @@ import time
 import math
 import multiprocessing.dummy as mp
 import threading
+import json
 
 tls = threading.local()
 
@@ -167,6 +169,105 @@ class NiraClient:
 
     return NiraJobStatus.TimedOut
 
+  def setAssetMetadata(self, assetUrlOrShortUuid, level, metadata):
+    """
+    Given an asset's short UUID or URL, a "asset" or "assetversion" level specifiction, and a user-defined metadata dictionary, attach the metadata to the resource.
+    This replaces whatever metadata existed on the resource, if any.
+
+    Args:
+      assetUrlOrShortUuid (string):
+                                    The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                                    For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
+                                    https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
+                                    If you specify a full URL, this function will extract the short UUID for you.
+
+      level (string):
+                                    Either "asset" or "assetversion". This specifies whether you'd like the metadata to be attached to the specified version of
+                                    the asset, or attached to the entire asset. Note, since a Nira short UUID/URL already encapsulates both an asset and its version,
+                                    you needn't specify the version as a separate prameter when attaching metadata to an assetversion.
+
+      metadata (dict|string):
+                                    Metadata you wish to attach to the asset. This can be either a dict or a json string.
+    Returns:
+      True if the operation was successful.
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+    """
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
+      return False
+
+    if level != "asset" and level != "assetversion":
+      print("level parameter must be 'asset' or 'assetversion'!", file=sys.stderr)
+      return False
+
+    if type(metadata) is dict:
+      userMetadata = json.dumps(metadata)
+    else:
+      try:
+        json.loads(metadata)
+      except Exception as e:
+        raise Exception('Invalid metadata json string specified!')
+      userMetadata = metadata
+
+    metadataEndpoint   = self.url + "asset-metadata"
+    metadataParams = {
+        'asset_suuid': shortUuid,
+        'level': level,
+        'metadata': userMetadata,
+        }
+
+    r = requests.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
+    r.raise_for_status()
+
+    return True
+
+  def getAssetMetadata(self, assetUrlOrShortUuid, level):
+    """
+    Given an asset's short UUID or URL and an "asset" or "assetversion" level specifiction, returns the metadata for the resource.
+
+    Args:
+      assetUrlOrShortUuid (string):
+                                    The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                                    For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
+                                    https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
+                                    If you specify a full URL, this function will extract the short UUID for you.
+
+      level (string):
+                                    Either "asset" or "assetversion". This specifies whether you'd like the metadata from the specified version of
+                                    the asset, or from the entire asset. Note, since a Nira short UUID/URL already encapsulates both an asset and its version,
+                                    you needn't specify the version as a separate prameter when request metadata for an assetversion.
+
+    Returns:
+      A dict of the metadata
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+    """
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
+      return False
+
+    if level != "asset" and level != "assetversion":
+      print("level parameter must be 'asset' or 'assetversion'!", file=sys.stderr)
+      return False
+
+    metadataEndpoint   = self.url + "asset-metadata"
+    metadataParams = {
+        'asset_suuid': shortUuid,
+        'level': level,
+        }
+
+    r = requests.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
+    r.raise_for_status()
+
+    return json.loads(r.json())
+
   def getAssetManifest(self, assetUrlOrShortUuid):
     """
     Given an asset's short UUID or URL, download and return the asset's manifest JSON.
@@ -207,7 +308,7 @@ class NiraClient:
     shortUuid = assetUrlOrShortUuid[-22:]
 
     if (len(shortUuid) != 22):
-      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.")
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
       return False
 
     manifestEndpoint   = self.url + "asset-manifest"
@@ -250,12 +351,12 @@ class NiraClient:
       os.mkdir(destDir)
 
     if (not os.path.isdir(destDir)):
-      print ("Directory could not be created: " + destDir)
+      print ("Directory could not be created: " + destDir, file=sys.stderr)
       return False
 
     sceneFilepath = False
 
-    #print ("asset manifest: " + str(manifest))
+    print ("asset manifest: " + str(manifest), file=sys.stderr)
 
     for asset in manifest['assets']:
       localFilepath = os.path.join(destDir, asset['path'])
@@ -263,10 +364,10 @@ class NiraClient:
       if not sceneFilepath:
         sceneFilepath = localFilepath
 
-      #print ("Attempting download of:" + asset['path'] + " with asset id/version:  " + )
+      #print ("Attempting download of:" + asset['path'] + " with asset id/version:  " + , file=sys.stderr)
 
       if (os.path.exists(localFilepath)):
-        print ("Skipping download of:" + asset['path'] + "! Destination already exists:" + localFilepath)
+        print ("Skipping download of:" + asset['path'] + "! Destination already exists:" + localFilepath, file=sys.stderr)
         continue
 
       downloadParams = {
@@ -278,7 +379,7 @@ class NiraClient:
       r = requests.get(url = downloadEndpoint, params=downloadParams, headers=self.headerParams, stream=True)
       r.raise_for_status()
 
-      print ("Writing file:" + localFilepath + " of length:" + str(len(r.content)))
+      print ("Writing file:" + localFilepath + " of length:" + str(len(r.content)), file=sys.stderr)
 
       with open(localFilepath, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1048576):
@@ -345,7 +446,7 @@ class NiraClient:
 
       totalsize = os.path.getsize(filePath)
       totalparts = (totalsize//self.uploadChunkSize) + 1
-      #print ("totalparts: " + str(totalparts))
+      #print ("totalparts: " + str(totalparts), file=sys.stderr)
 
       def sendChunk(partidx):
         chunkoffset = partidx * self.uploadChunkSize
