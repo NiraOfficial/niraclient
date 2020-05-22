@@ -1,15 +1,21 @@
 # Copyright (C) Nira, Inc. - All Rights Reserved
 
 from __future__ import print_function
-import requests
 import uuid
 import os
+myDir = os.path.dirname(os.path.realpath(__file__))
+myDir += "/deps"
+
+import sys
+sys.path.insert(0, myDir)
+
 from datetime import datetime
 import time
 import math
 import multiprocessing.dummy as mp
 import threading
 import json
+import requests
 
 tls = threading.local()
 
