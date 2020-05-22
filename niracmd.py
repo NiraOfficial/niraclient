@@ -3,13 +3,24 @@
 # Copyright (C) Nira, Inc. - All Rights Reserved
 
 from __future__ import print_function
-import time, sys
+
+import os
+myDir = os.path.dirname(os.path.realpath(__file__))
+myDir += "/deps"
+
+import sys
+sys.path.insert(0, myDir)
+
+import time
 from niraclient import NiraClient, NiraUploadInfo, NiraJobStatus, isoUtcDateParse
 import argparse
 import requests
 import datetime
 import traceback
 import json
+
+# To verify we're using the bundled copy of requests
+#print(requests.__file__)
 
 parser = argparse.ArgumentParser(description='Nira Client CLI')
 parser.add_argument('--apikey', required=True, type=str)
