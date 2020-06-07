@@ -413,6 +413,10 @@ class NiraClient:
     jobsEndpoint   = self.url + "jobs"
     assetsEndpoint = self.url + "assets"
 
+    for assetpath in assetpaths:
+      if not os.path.exists(assetpath):
+        raise IOError('File not found: ' + assetpath)
+
     batchUuid = str(uuid.uuid4())
 
     jobCreateParams = {
@@ -431,8 +435,6 @@ class NiraClient:
       assetUuid=str(uuid.uuid4())
       fileName = os.path.basename(assetpath)
       filePath = assetpath
-
-
 
       assetCreateParams = {
           'fileName': fileName,

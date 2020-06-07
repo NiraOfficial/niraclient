@@ -14,7 +14,7 @@ sys.path.insert(0, myDir)
 import time
 from niraclient import NiraClient, NiraUploadInfo, NiraJobStatus, isoUtcDateParse
 import argparse
-import requests
+import requests.exceptions
 import datetime
 import traceback
 import json
