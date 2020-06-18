@@ -274,6 +274,189 @@ class NiraClient:
 
     return json.loads(r.json())
 
+  def getAssetState(self, assetUrlOrShortUuid):
+    """
+    Given an asset's short UUID or URL, download and return the asset's state JSON.
+    An asset's state contains information about the asset's material assignments, texture assignments, and environment settings.
+    Here's an example state:
+      {
+        "camFlashlight": 0,
+        "envName": "Urban Courtyard",
+        "envExposure": 0,
+        "envRotY": 0,
+        "bgType": "Color",
+        "bgColor": {
+          "x": 0.3100000023841858,
+          "y": 0.3100000023841858,
+          "z": 0.3100000023841858
+        },
+        "renderTextures": true,
+        "renderFacetedNormals": false,
+        "renderAo": true,
+        "coordSystem": "Yup",
+        "materials": [{
+          "matHash": 16446215244533305000,
+          "params": {
+            "albedoR": 1,
+            "albedoG": 1,
+            "albedoB": 1,
+            "opacity": 1,
+            "specularR": 1,
+            "specularG": 1,
+            "specularB": 1,
+            "reflectance": 0.5,
+            "emissiveR": 0,
+            "emissiveG": 0,
+            "emissiveB": 0,
+            "emissiveIntensity": 0.125,
+            "specOrMetal": 1,
+            "roughness": 0.6700000166893005,
+            "invRoughness": 0,
+            "singleChannel": 0,
+            "detailMultiplier": 0.5,
+            "visibility": 0.5,
+            "vertexColor": 1,
+            "metallic": 1,
+            "albedoSample": 0,
+            "normalSample": 0,
+            "normalObjSpace": 0,
+            "detailSample": 0,
+            "normalFlipX": 1,
+            "normalFlipY": 1,
+            "normalFlipZ": 1,
+            "normalMultiplier": 0.5,
+            "opacityChannelR": 0,
+            "opacityChannelG": 0,
+            "opacityChannelB": 0,
+            "opacityChannelA": 0,
+            "metallicChannelR": 0,
+            "metallicChannelG": 0,
+            "metallicChannelB": 0,
+            "metallicChannelA": 0,
+            "roughnessChannelR": 0,
+            "roughnessChannelG": 0,
+            "roughnessChannelB": 0,
+            "roughnessChannelA": 0,
+            "visibilityChannelR": 0,
+            "visibilityChannelG": 0,
+            "visibilityChannelB": 0,
+            "visibilityChannelA": 0,
+            "emissiveChannelR": 0,
+            "emissiveChannelG": 0,
+            "emissiveChannelB": 0,
+            "emissiveChannelA": 0,
+            "reflectanceChannelR": 0,
+            "reflectanceChannelG": 0,
+            "reflectanceChannelB": 0,
+            "reflectanceChannelA": 0,
+            "uvMul": 1,
+            "detailMul": 20,
+            "uvScaleU": 1,
+            "uvScaleV": 1,
+            "uvShiftU": 0,
+            "uvShiftV": 0,
+            "detailScaleU": 1,
+            "detailScaleV": 1,
+            "detailShiftU": 0,
+            "detailShiftV": 0
+          },
+          "textures": {},
+          "matName": "Tpot -  Default Material"
+        }],
+        "envBlur": 2,
+        "renderTaa": true,
+        "renderBloom": false,
+        "tonemapVal": 7,
+        "vignette": 0,
+        "dithering": 0,
+        "camUp": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "renderUseMipmaps": true,
+        "envGroundProj": false,
+        "useSingleMat": false,
+        "noMipmapGen": false
+      }
+
+    Args:
+      assetUrlOrShortUuid (string):
+                                    The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                                    For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
+                                    https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
+                                    If you specify a full URL, this function will extract the short UUID for you.
+
+    Returns:
+      The state (dict). Upon failure, False
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+
+    """
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
+      return False
+
+    stateEndpoint   = self.url + "asset-state"
+    stateParams = {
+        'asset_suuid': shortUuid,
+        'json': 1,
+        }
+
+    r = requests.get(url=stateEndpoint, params=stateParams, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def setAssetState(self, assetUrlOrShortUuid, state):
+    """
+    Given an asset's short UUID or URL and a user-defined state dictionary or json string, apply the state to the asset.
+    This will be merged with the existing asset state, if any.
+
+    Args:
+      assetUrlOrShortUuid (string):
+                                    The short UUID or URL of an asset in Nira. The short UUID can be found in the URL of an asset when you're viewing it.
+                                    For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
+                                    https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
+                                    If you specify a full URL, this function will extract the short UUID for you.
+
+      state (dict|string):
+                                    State you wish to set on the asset. This can be either a dict or a json string.
+    Returns:
+      True if the operation was successful.
+
+    Raises:
+      HTTPError: An error occurred while communicating with the Nira server.
+    """
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
+      return False
+
+    if type(state) is dict:
+      stateDict = state
+    else:
+      try:
+        stateDict = json.loads(state)
+        print(str(stateDict))
+      except Exception as e:
+        raise Exception('Invalid state json string specified!')
+
+    stateEndpoint = self.url + "asset-state"
+
+    stateParams = {
+        'asset_suuid': shortUuid,
+        }
+
+    r = requests.put(url = stateEndpoint, params=stateParams, json=stateDict, headers=self.headerParams)
+    r.raise_for_status()
+
+    return True
+
   def getAssetManifest(self, assetUrlOrShortUuid):
     """
     Given an asset's short UUID or URL, download and return the asset's manifest JSON.
@@ -300,9 +483,6 @@ class NiraClient:
                                     For example, the short UUID of the following asset URL is "5R5VuRFkSs21FK8CddXM9Q":
                                     https://example.nira.app/a/5R5VuRFkSs21FK8CddXM9Q
                                     If you specify a full URL, this function will extract the short UUID for you.
-
-      destDir:
-                                    Directory to hold the asset files. This function will attempt to create the directory if it doesn't already exist.
 
     Returns:
       The manifest (dict). Upon failure, False
@@ -396,7 +576,7 @@ class NiraClient:
     state = manifest['state']
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False):
+  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -423,6 +603,9 @@ class NiraClient:
         'status': "validating",
         'batchId': batchUuid,
         'textureCompression': "BC1" if compressTextures else "none",
+        'noVertexColors': noVertexColors,
+        'noNormals': noNormals,
+        'ignoreMtl': ignoreMtl,
         }
 
     r = requests.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
