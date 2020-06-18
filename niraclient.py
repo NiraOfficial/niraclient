@@ -278,7 +278,7 @@ class NiraClient:
     """
     Given an asset's short UUID or URL, download and return the asset's state JSON.
     An asset's state contains information about the asset's material assignments, texture assignments, and environment settings.
-    Here's an example state:
+    Here's an example state::
       {
         "camFlashlight": 0,
         "envName": "Urban Courtyard",
@@ -414,7 +414,8 @@ class NiraClient:
   def setAssetState(self, assetUrlOrShortUuid, state):
     """
     Given an asset's short UUID or URL and a user-defined state dictionary or json string, apply the state to the asset.
-    This will be merged with the existing asset state, if any.
+    This will be merged with the existing asset state, if any. The specified state needn't be complete -- you can specify only
+    the attributes that you wish to change.
 
     Args:
       assetUrlOrShortUuid (string):
