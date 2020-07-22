@@ -28,6 +28,7 @@ parser.add_argument('--url', required=True, type=str)
 parser.add_argument('--useremail', type=str, default='', help="Specifies the user account that certain API operations occur under. For example, if an asset upload is performed, that user's name will appear in the `Uploader` column of Nira's asset listing page. If this argument is not provided, the first admin user found in the user database will be used.")
 parser.add_argument('--upload-threads', dest='uploadthreads', type=int, default=4, help="Number of simultaneous upload connection threads to use. Using mulitple simultaneous connections for uploads can accelerate them significantly, particularly over long-distance WAN links.")
 parser.add_argument('--upload-chunk-size', dest='uploadchunksize', type=int, default=1024 * 1024 * 10, help="Size of each uploaded chunk, in bytes. When uploading, files will be divided into chunks of this size and sent to the Nira server using the number of threads specified by the --upload-threads option.")
+parser.add_argument('--no-upload-compression', action='store_false', dest='use_upload_compression', help="Disables the use of automatic upload compression. Upload compression is enabled by default. You may wish to disable it if you have a particularly upstream network speed (1gbps+) or have concerns about CPU utilization on the machine doing the uploading.")
 
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
@@ -103,7 +104,7 @@ def formatAssetUpdates(assetsData, lastUpdateTime):
 
 try:
   if len(args.asset_path) > 0:
-    uploadInfo = nirac.uploadAsset(args.asset_path, isSequence=args.is_sequence, compressTextures=args.compress_textures, noVertexColors=args.no_vertex_colors, noNormals=args.no_normals, ignoreMtl=args.ignore_mtl)
+    uploadInfo = nirac.uploadAsset(args.asset_path, isSequence=args.is_sequence, compressTextures=args.compress_textures, noVertexColors=args.no_vertex_colors, noNormals=args.no_normals, ignoreMtl=args.ignore_mtl, useCompression=args.use_upload_compression)
 
     if args.wait_max_seconds > 0:
       processingStatus = nirac.waitForAssetProcessing(uploadInfo.assetJobId, timeoutSeconds = args.wait_max_seconds)

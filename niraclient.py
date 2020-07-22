@@ -17,6 +17,9 @@ import threading
 import json
 import requests
 
+# Defer import of zlib until uploadAsset is actually called to prevent a needless warning message.
+zlib = False
+
 tls = threading.local()
 
 def isoUtcDateParse(isoDateStr):
@@ -577,7 +580,7 @@ class NiraClient:
     state = manifest['state']
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False):
+  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -593,6 +596,14 @@ class NiraClient:
     """
     jobsEndpoint   = self.url + "jobs"
     assetsEndpoint = self.url + "assets"
+
+    global zlib
+    if useCompression and zlib == False:
+      try:
+        import zlib
+      except ImportError:
+        zlib = None
+        print("Warning: Python zlib module is not available! Consider installing it for improved upload speeds.", file=sys.stderr)
 
     for assetpath in assetpaths:
       if not os.path.exists(assetpath):
@@ -652,6 +663,10 @@ class NiraClient:
         if not chunk:
           return
 
+        if useCompression and zlib:
+          compressedChunk = zlib.compress(chunk, 1)
+          chunk = compressedChunk
+
         fields={
           'qquuid': assetUuid,
           'qqchunksize': str(len(chunk)),
@@ -661,6 +676,9 @@ class NiraClient:
           'qqtotalparts': str(totalparts),
           'qqtotalfilesize': str(totalsize),
           }
+
+        if useCompression and zlib:
+          fields.update({'qqcompression': 'deflate'})
 
         files={ 'qqfile': (fileName, chunk) }
 
