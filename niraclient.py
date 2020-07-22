@@ -651,7 +651,18 @@ class NiraClient:
       totalparts = (totalsize//self.uploadChunkSize) + 1
       #print ("totalparts: " + str(totalparts), file=sys.stderr)
 
+      global compressionRatios
+      global disableCompression
+
+      compressionRatios = []
+      disableCompression = False
+
       def sendChunk(partidx):
+        global compressionRatios
+        global disableCompression
+
+        shouldUseCompression = useCompression and zlib and not disableCompression
+
         chunkoffset = partidx * self.uploadChunkSize
 
         if not hasattr(tls, 'fh'):
@@ -663,8 +674,10 @@ class NiraClient:
         if not chunk:
           return
 
-        if useCompression and zlib:
+        if shouldUseCompression:
           compressedChunk = zlib.compress(chunk, 1)
+          compressionRatio = float(len(compressedChunk)) / len(chunk)
+          compressionRatios.append(compressionRatio)
           chunk = compressedChunk
 
         fields={
@@ -677,7 +690,7 @@ class NiraClient:
           'qqtotalfilesize': str(totalsize),
           }
 
-        if useCompression and zlib:
+        if shouldUseCompression:
           fields.update({'qqcompression': 'deflate'})
 
         files={ 'qqfile': (fileName, chunk) }
@@ -685,6 +698,13 @@ class NiraClient:
         headers = {}
         headers.update(self.headerParams)
         response = requests.post(self.url + 'asset-uploads', data=fields, files=files, headers=headers)
+
+        if shouldUseCompression and not disableCompression:
+          if len(compressionRatios) >= 6:
+            avgCompressionRatio = sum(compressionRatios) / len(compressionRatios)
+            if avgCompressionRatio >= 0.9:
+              disableCompression = True
+              #print ("Info: \"" + fileName + "\" compresses poorly (ratio: %.3f" % (1/avgCompressionRatio) + "). Skipping upload compression for this file.", file=sys.stderr)
 
       def closeHandles(threadid):
         if hasattr(tls, 'fh'):
