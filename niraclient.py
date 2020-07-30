@@ -727,6 +727,14 @@ class NiraClient:
           }
       response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
 
+      assetPatchUrl = assetsEndpoint + "/" + str(asset['id'])
+      assetPatchParams = {
+          'status': "uploaded",
+          'filesize': str(totalsize),
+          }
+      r = requests.patch(url = assetPatchUrl, data=assetPatchParams, headers=self.headerParams)
+      r.raise_for_status()
+
     jobPatchParams = {
         'status': "uploaded",
         'batchId': batchUuid,
