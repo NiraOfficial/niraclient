@@ -16,6 +16,7 @@ import multiprocessing.dummy as mp
 import threading
 import json
 import requests
+import subprocess
 
 # Defer import of zlib until uploadAsset is actually called to prevent a needless warning message.
 zlib = False
@@ -609,6 +610,34 @@ class NiraClient:
       if not os.path.exists(assetpath):
         raise IOError('File not found: ' + assetpath)
 
+    filehashes = {}
+    filesizes = {}
+    for assetpath in assetpaths:
+      errCode = 0
+      hash = ''
+      try:
+        hash = subprocess.check_output([myDir + "/meowhash/meowfile", assetpath])
+      except subprocess.CalledProcessError as hashExec:
+        errCode = hashExec.returncode
+
+      if errCode == 0 and len(hash) == 36:
+        filesize = os.path.getsize(assetpath)
+
+        assetFindParams = {
+            'meowhash': hash,
+            'filesize': filesize,
+            '$limit': 1,
+            '$paginate': 'false',
+          }
+
+        r = requests.get(url = assetsEndpoint, params=assetFindParams, headers=self.headerParams)
+        r.raise_for_status()
+        foundAsset = r.json()
+
+        if (len(foundAsset)):
+          filehashes[assetpath] = hash
+          filesizes[assetpath] = filesize
+
     batchUuid = str(uuid.uuid4())
 
     jobCreateParams = {
@@ -711,27 +740,36 @@ class NiraClient:
           tls.fh.close()
           delattr(tls, 'fh')
 
-      p = mp.Pool(self.uploadThreadCount)
-      p.map(sendChunk, range(0, totalparts))
-      p.map(closeHandles, range(0, self.uploadThreadCount * 4))
-      p.close()
-      p.join()
+      # Only perform upload if there isn't a hash
+      if assetpath not in filehashes:
+        print("UPLOADING FILE")
+        p = mp.Pool(self.uploadThreadCount)
+        p.map(sendChunk, range(0, totalparts))
+        p.map(closeHandles, range(0, self.uploadThreadCount * 4))
+        p.close()
+        p.join()
 
-      headers = {}
-      headers.update(self.headerParams)
-      payload={
-          'qquuid': assetUuid,
-          'qqfilename': fileName,
-          'qqtotalfilesize': str(totalsize),
-          'qqtotalparts': str(totalparts),
-          }
-      response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
+        headers = {}
+        headers.update(self.headerParams)
+        payload={
+            'qquuid': assetUuid,
+            'qqfilename': fileName,
+            'qqtotalfilesize': str(totalsize),
+            'qqtotalparts': str(totalparts),
+            }
+        response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
 
       assetPatchUrl = assetsEndpoint + "/" + str(asset['id'])
       assetPatchParams = {
           'status': "uploaded",
           'filesize': str(totalsize),
           }
+
+      if assetpath in filehashes:
+        assetPatchParams['meowhash'] = filehashes[assetpath]
+        if totalsize != filesizes[assetpath]:
+          raise Exception('Filesize mismatch!' + str(totalsize) + ' ' +  str(filesizes[assetpath]))
+
       r = requests.patch(url = assetPatchUrl, data=assetPatchParams, headers=self.headerParams)
       r.raise_for_status()
 
