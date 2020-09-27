@@ -32,6 +32,9 @@ parser.add_argument('--no-upload-compression', action='store_false', dest='use_u
 
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--upload', dest="asset_path", default=[], nargs='+', type=str, help='Takes a space separated list of file paths to upload, uploads them, then prints a URL to the resulting asset on stdout. The first file path specified should be a primary scene file (ma, mb, zpr, etc). Subsequent file paths should be accompanying files, such as textures.')
+parser.add_argument("--asset-type", choices=["default", "sculpt", "photogrammetry", "volumetric_video"], default='default', dest="asset_type")
+parser.add_argument("--asset-name", dest="asset_name", help="When using --upload, specify an asset name")
+parser.add_argument("--asset-id", dest="asset_id", help='When using --upload, specify an asset id')
 group.add_argument('--download', dest="download", default=[], nargs=2, type=str, help='Takes two parameters: An asset\'s URL (or the asset\'s short UUID) and a local destination folder to store the asset. The asset and all of its accompanying assets will be downloaded into this folder.')
 group.add_argument('--get-state', dest="get_asset_state_url", default='', type=str, help='Takes an asset\'s URL (or the asset\'s short UUID) and returns the latest state for the asset.')
 group.add_argument('--set-state', dest="set_asset_state_url", default='', type=str, help='Takes an asset\'s URL (or the asset\'s short UUID), reads state JSON from stdin, and merges this state to the asset on the Nira server.')
@@ -104,7 +107,7 @@ def formatAssetUpdates(assetsData, lastUpdateTime):
 
 try:
   if len(args.asset_path) > 0:
-    uploadInfo = nirac.uploadAsset(args.asset_path, isSequence=args.is_sequence, compressTextures=args.compress_textures, noVertexColors=args.no_vertex_colors, noNormals=args.no_normals, ignoreMtl=args.ignore_mtl, useCompression=args.use_upload_compression)
+    uploadInfo = nirac.uploadAsset(args.asset_path, assetType=args.asset_type, assetName=args.asset_name, assetId=args.asset_id, compressTextures=args.compress_textures, noVertexColors=args.no_vertex_colors, noNormals=args.no_normals, ignoreMtl=args.ignore_mtl, useCompression=args.use_upload_compression)
 
     if args.wait_max_seconds > 0:
       processingStatus = nirac.waitForAssetProcessing(uploadInfo.assetJobId, timeoutSeconds = args.wait_max_seconds)

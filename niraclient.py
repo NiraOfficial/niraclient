@@ -79,14 +79,14 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    markupsEndpoint = self.url + "users"
+    usersEndpoint = self.url + "users"
 
     userQueryParams = {
         'email': email,
         '$paginate': "false",
         }
 
-    r = requests.get(url = markupsEndpoint, params=userQueryParams, headers=self.headerParams)
+    r = requests.get(url = usersEndpoint, params=userQueryParams, headers=self.headerParams)
     r.raise_for_status()
 
     user = r.json()
@@ -109,7 +109,7 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    markupsEndpoint = self.url + "assets"
+    assetEndpoint = self.url + "asset"
 
     updatedSince = since.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
     assetQueryParams = {
@@ -118,7 +118,7 @@ class NiraClient:
         '$updatedSince': updatedSince,
       }
 
-    r = requests.get(url = markupsEndpoint, params=assetQueryParams, headers=self.headerParams)
+    r = requests.get(url = assetEndpoint, params=assetQueryParams, headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -136,7 +136,7 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    jobEndpoint   = self.url + "jobs" + "/" + str(jobId)
+    jobEndpoint   = self.url + "job" + "/" + str(jobId)
     r = requests.get(url = jobEndpoint, headers=self.headerParams)
     r.raise_for_status()
 
@@ -581,7 +581,7 @@ class NiraClient:
     state = manifest['state']
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths, isSequence=False, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True):
+  def uploadAsset(self, assetpaths, assetType, assetName='', assetId=0, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -595,8 +595,9 @@ class NiraClient:
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
     """
-    jobsEndpoint   = self.url + "jobs"
-    assetsEndpoint = self.url + "assets"
+    jobsEndpoint  = self.url + "job"
+    filesEndpoint = self.url + "file"
+    assetsEndpoint = self.url + "asset"
 
     global zlib
     if useCompression and zlib == False:
@@ -623,14 +624,14 @@ class NiraClient:
       if errCode == 0 and len(hash) == 36:
         filesize = os.path.getsize(assetpath)
 
-        assetFindParams = {
+        fileFindParams = {
             'meowhash': hash,
             'filesize': filesize,
             '$limit': 1,
             '$paginate': 'false',
           }
 
-        r = requests.get(url = assetsEndpoint, params=assetFindParams, headers=self.headerParams)
+        r = requests.get(url = filesEndpoint, params=fileFindParams, headers=self.headerParams)
         r.raise_for_status()
         foundAsset = r.json()
 
@@ -642,39 +643,36 @@ class NiraClient:
 
     jobCreateParams = {
         'status': "validating",
+        'stagetype': assetType,
         'batchId': batchUuid,
         'textureCompression': "BC1" if compressTextures else "none",
+        'stagename': assetName,
         'noVertexColors': noVertexColors,
         'noNormals': noNormals,
         'ignoreMtl': ignoreMtl,
+        'assetname': assetName,
         }
 
     r = requests.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
     r.raise_for_status()
     job = r.json()
 
-    parentAssetpathId = 0
     assets = []
     for assetpath in assetpaths:
       assetUuid=str(uuid.uuid4())
       fileName = os.path.basename(assetpath)
       filePath = assetpath
 
-      assetCreateParams = {
+      fileCreateParams = {
           'fileName': fileName,
           'uuid': assetUuid,
-          'parentAssetpathId': parentAssetpathId,
           'jobId': job['id'],
-          'isSequence': isSequence,
           }
 
-      r = requests.post(url = assetsEndpoint, data=assetCreateParams, headers=self.headerParams)
+      r = requests.post(url = filesEndpoint, data=fileCreateParams, headers=self.headerParams)
       r.raise_for_status()
       asset = r.json()
       assets.append(asset)
-
-      if not parentAssetpathId:
-        parentAssetpathId = asset['id']
 
       totalsize = os.path.getsize(filePath)
       totalparts = (totalsize//self.uploadChunkSize) + 1
@@ -759,20 +757,23 @@ class NiraClient:
             }
         response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
 
-      assetPatchUrl = assetsEndpoint + "/" + str(asset['id'])
-      assetPatchParams = {
+      filePatchUrl = filesEndpoint + "/" + str(asset['id'])
+      filePatchParams = {
           'status': "uploaded",
           'filesize': str(totalsize),
           }
 
       if assetpath in filehashes:
-        assetPatchParams['meowhash'] = filehashes[assetpath]
+        filePatchParams['meowhash'] = filehashes[assetpath]
         if totalsize != filesizes[assetpath]:
           raise Exception('Filesize mismatch!' + str(totalsize) + ' ' +  str(filesizes[assetpath]))
 
-      r = requests.patch(url = assetPatchUrl, data=assetPatchParams, headers=self.headerParams)
+      r = requests.patch(url = filePatchUrl, data=filePatchParams, headers=self.headerParams)
       r.raise_for_status()
 
+
+    # TODO: Create an asset (aka stage) and set this stageId onto the job.
+    #       This allows the job processor to create the appropriate stageversionassets entries.
     jobPatchParams = {
         'status': "uploaded",
         'batchId': batchUuid,
