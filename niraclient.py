@@ -17,6 +17,23 @@ import threading
 import json
 import requests
 import subprocess
+import base64
+import uuid
+
+# Always retry
+from requests.adapters import HTTPAdapter
+
+s = requests.Session()
+from requests.packages.urllib3.util.retry import Retry
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 400, 401, 413, 429, 500, 501, 502, 503, 504 ])
+
+s.mount('http://', HTTPAdapter(max_retries=retries))
+s.mount('https://', HTTPAdapter(max_retries=retries))
+
+try:
+  from urllib.parse import urlparse
+except ImportError:
+  from urlparse import urlparse
 
 # Defer import of zlib until uploadAsset is actually called to prevent a needless warning message.
 zlib = False
@@ -142,6 +159,21 @@ class NiraClient:
 
     return r.json()
 
+  def assetUuidToAssetUrl(self, assetUuid):
+    uuidForUrl = base64.urlsafe_b64encode(uuid.UUID(assetUuid).bytes)
+    uuidForUrl = uuidForUrl.replace("=", "")
+    return self.formatAssetUrl(uuidForUrl)
+
+  def assetUrlToAssetUuid(self, assetUrlOrShortUuid):
+    shortUuid = assetUrlOrShortUuid[-22:]
+
+    if (len(shortUuid) != 22):
+      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
+      return False
+
+    assetUuid = base64.urlsafe_b64decode(shortUuid)
+    return assetUuid
+
   def waitForAssetProcessing(self, assetJobId, timeoutSeconds = 600):
     """
     Polls the server until the asset is processed, then returns its status.
@@ -153,7 +185,7 @@ class NiraClient:
       timeoutSeconds (int): Maximum number of seconds to wait for a result from the server.
 
     Returns:
-      A `NiraJobStatus` object property indicating the final status of the processing job.
+      A `NiraUploadInfo` object.
 
     Raises:
       HTTPError: An error occurred while communicating with the Nira server.
@@ -162,14 +194,26 @@ class NiraClient:
     sleepTime = 2
     totalSleepTime = 0
 
-    while True:
+    uploadInfo = NiraUploadInfo()
+    uploadInfo.assetJobId = assetJobId
+    uploadInfo.jobStatus = NiraJobStatus.Pending
+
+    while timeoutSeconds != 0 and True:
       updatedJob = self.getAssetJob(assetJobId)
 
       if updatedJob['status'] == 'processed':
-        return NiraJobStatus.Processed
+        assetEndpoint = self.url + "asset/" + str(updatedJob['stageId'])
+        r = requests.get(url = assetEndpoint, headers=self.headerParams)
+        asset = r.json()
+
+        uploadInfo.assetUrl = self.assetUuidToAssetUrl(asset['uuid'])
+
+        uploadInfo.jobStatus = NiraJobStatus.Processed
+        break
 
       if updatedJob['status'] == 'processed_with_errors':
-        return NiraJobStatus.ProcessingError
+        uploadInfo.jobStatus = NiraJobStatus.ProcessingError
+        break
 
       totalSleepTime += sleepTime
       if (totalSleepTime > timeoutSeconds):
@@ -177,7 +221,7 @@ class NiraClient:
 
       time.sleep(sleepTime)
 
-    return NiraJobStatus.TimedOut
+    return uploadInfo
 
   def setAssetMetadata(self, assetUrlOrShortUuid, level, metadata):
     """
@@ -462,6 +506,23 @@ class NiraClient:
 
     return True
 
+  def getAssetFromAssetUrl(self, assetUrlOrShortUuid):
+    #assetUuid = self.assetUrlToAssetUuid(shortUuid)
+
+    url = urlparse(assetUrlOrShortUuid)
+
+    assetQueryParams = {
+        '$path': url.path,
+      }
+
+    print ("query params:" + str(assetQueryParams))
+
+    assetEndpoint = self.url + "asset"
+    r = requests.get(url = assetEndpoint, params=assetQueryParams, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()[0]
+
   def getAssetManifest(self, assetUrlOrShortUuid):
     """
     Given an asset's short UUID or URL, download and return the asset's manifest JSON.
@@ -496,16 +557,15 @@ class NiraClient:
       HTTPError: An error occurred while communicating with the Nira server.
 
     """
-    shortUuid = assetUrlOrShortUuid[-22:]
+    asset = self.getAssetFromAssetUrl(assetUrlOrShortUuid)
+    print("result" + str(asset))
 
-    if (len(shortUuid) != 22):
-      print("A valid asset URL or short UUID was not specified. It should be at least 22 characters.", file=sys.stderr)
-      return False
+    manifestEndpoint = self.url + "asset-manifest"
 
-    manifestEndpoint   = self.url + "asset-manifest"
     manifestParams = {
-        'asset_suuid': shortUuid,
+        'asset_id': asset['id'],
         }
+
 
     r = requests.get(url = manifestEndpoint, params=manifestParams, headers=self.headerParams)
     r.raise_for_status()
@@ -578,10 +638,11 @@ class NiraClient:
             f.write(chunk)
             # f.flush()
 
-    state = manifest['state']
+    #state = manifest['state']
+    state = False
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths, assetType, assetName='', assetId=0, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True):
+  def uploadAsset(self, assetpaths, assetType, assetName='', assetId=0, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True, maxWaitSeconds=3600):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -607,37 +668,12 @@ class NiraClient:
         zlib = None
         print("Warning: Python zlib module is not available! Consider installing it for improved upload speeds.", file=sys.stderr)
 
+    filehashes = {}
+    filesizes = {}
+
     for assetpath in assetpaths:
       if not os.path.exists(assetpath):
         raise IOError('File not found: ' + assetpath)
-
-    filehashes = {}
-    filesizes = {}
-    for assetpath in assetpaths:
-      errCode = 0
-      hash = ''
-      try:
-        hash = subprocess.check_output([myDir + "/meowhash/meowfile", assetpath])
-      except subprocess.CalledProcessError as hashExec:
-        errCode = hashExec.returncode
-
-      if errCode == 0 and len(hash) == 36:
-        filesize = os.path.getsize(assetpath)
-
-        fileFindParams = {
-            'meowhash': hash,
-            'filesize': filesize,
-            '$limit': 1,
-            '$paginate': 'false',
-          }
-
-        r = requests.get(url = filesEndpoint, params=fileFindParams, headers=self.headerParams)
-        r.raise_for_status()
-        foundAsset = r.json()
-
-        if (len(foundAsset)):
-          filehashes[assetpath] = hash
-          filesizes[assetpath] = filesize
 
     batchUuid = str(uuid.uuid4())
 
@@ -658,7 +694,21 @@ class NiraClient:
     job = r.json()
 
     assets = []
-    for assetpath in assetpaths:
+    def uploadFile(assetpath):
+      filesizes[assetpath] = os.path.getsize(assetpath)
+
+      hash = ''
+      try:
+        #print("HASHING FILE: " + assetpath)
+        hash = subprocess.check_output([myDir + "/meowhash/meowfile", assetpath])
+      except subprocess.CalledProcessError as hashExec:
+        raise Exception('meowhash exe not found!')
+      #print("HASHED FILE: " + assetpath)
+
+      if len(hash) != 36:
+        raise Exception('meowhash result unexpected found! result: ' + hash)
+
+      filehashes[assetpath] = hash
       assetUuid=str(uuid.uuid4())
       fileName = os.path.basename(assetpath)
       filePath = assetpath
@@ -669,6 +719,7 @@ class NiraClient:
           'jobId': job['id'],
           }
 
+      #print("CREATING FILE RECORD: " + assetpath)
       r = requests.post(url = filesEndpoint, data=fileCreateParams, headers=self.headerParams)
       r.raise_for_status()
       asset = r.json()
@@ -738,9 +789,24 @@ class NiraClient:
           tls.fh.close()
           delattr(tls, 'fh')
 
-      # Only perform upload if there isn't a hash
-      if assetpath not in filehashes:
-        print("UPLOADING FILE")
+      #print("LOOKING UP FILE: " + assetpath)
+      fileFindParams = {
+          'meowhash': filehashes[assetpath],
+          'filesize': filesizes[assetpath],
+          '$limit': 1,
+          '$paginate': 'false',
+        }
+
+      r = requests.get(url = filesEndpoint, params=fileFindParams, headers=self.headerParams)
+      r.raise_for_status()
+      foundAsset = r.json()
+      #print("LOOKED UP FILE: " + assetpath)
+
+      fileOnServer = len(foundAsset) > 0
+
+      # Only perform upload if it's not already on the server
+      if not fileOnServer:
+        #print("UPLOADING FILE: " + assetpath)
         p = mp.Pool(self.uploadThreadCount)
         p.map(sendChunk, range(0, totalparts))
         p.map(closeHandles, range(0, self.uploadThreadCount * 4))
@@ -756,24 +822,28 @@ class NiraClient:
             'qqtotalparts': str(totalparts),
             }
         response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
+      else:
+        #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
+        pass
 
       filePatchUrl = filesEndpoint + "/" + str(asset['id'])
       filePatchParams = {
           'status': "uploaded",
-          'filesize': str(totalsize),
+          'filesize': filesizes[assetpath],
+          'meowhash': filehashes[assetpath],
           }
 
-      if assetpath in filehashes:
-        filePatchParams['meowhash'] = filehashes[assetpath]
-        if totalsize != filesizes[assetpath]:
-          raise Exception('Filesize mismatch!' + str(totalsize) + ' ' +  str(filesizes[assetpath]))
+      if totalsize != filesizes[assetpath]:
+        raise Exception('Filesize mismatch!' + str(totalsize) + ' ' +  str(filesizes[assetpath]))
 
       r = requests.patch(url = filePatchUrl, data=filePatchParams, headers=self.headerParams)
       r.raise_for_status()
 
+    pp = mp.Pool(8)
+    pp.map(uploadFile, assetpaths)
+    pp.close()
+    pp.join()
 
-    # TODO: Create an asset (aka stage) and set this stageId onto the job.
-    #       This allows the job processor to create the appropriate stageversionassets entries.
     jobPatchParams = {
         'status': "uploaded",
         'batchId': batchUuid,
@@ -782,10 +852,7 @@ class NiraClient:
     r.raise_for_status()
     assetJob = r.json()
 
-    uploadInfo = NiraUploadInfo()
-    uploadInfo.assetUrl = self.formatAssetUrl(assets[0]['urlUuid'])
-    uploadInfo.assetJobId = assetJob['id']
-    uploadInfo.assets = assets
+    uploadInfo = self.waitForAssetProcessing(assetJob['id'], timeoutSeconds = maxWaitSeconds)
 
     return uploadInfo
 
@@ -800,12 +867,12 @@ class NiraUploadInfo:
     URL to the new asset.
   assetJobId (int):
     Numeric id of the asset upload job. Useful for querying the progress of asset processing (see waitForAssetProcessing method).
-  assets:
-    A list of asset records. Their order corresponds to the order of the assetpaths argument.
+  jobStatus (NiraJobStatus):
+    Numeric id of the asset upload job. Useful for querying the progress of asset processing (see waitForAssetProcessing method).
   """
   pass
 
 class NiraJobStatus:
+  Pending = "Pending"
   Processed = "Processed"
   ProcessingError = "Processing Error"
-  TimedOut = "Timed Out"
