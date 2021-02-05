@@ -201,7 +201,7 @@ class NiraClient:
     while timeoutSeconds != 0 and True:
       updatedJob = self.getAssetJob(assetJobId)
 
-      if updatedJob['status'] == 'processed':
+      if updatedJob['status'] == 'complete':
         assetEndpoint = self.url + "asset/" + str(updatedJob['stageId'])
         r = requests.get(url = assetEndpoint, headers=self.headerParams)
         asset = r.json()
@@ -211,7 +211,7 @@ class NiraClient:
         uploadInfo.jobStatus = NiraJobStatus.Processed
         break
 
-      if updatedJob['status'] == 'processed_with_errors':
+      if updatedJob['status'] == 'error':
         uploadInfo.jobStatus = NiraJobStatus.ProcessingError
         break
 
