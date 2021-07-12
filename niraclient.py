@@ -19,6 +19,21 @@ import requests
 import subprocess
 import base64
 import uuid
+import platform
+
+osSystem = platform.system()
+
+if osSystem == "Windows":
+  meowfileExe = myDir + "/meowhash/meowfile_win_x64.exe"
+elif osSystem == "Linux":
+  meowfileExe = myDir + "/meowhash/meowfile_linux_x64"
+elif osSystem == "Darwin":
+  if platform.machine() == "aarch64":
+    meowfileExe = myDir + "/meowhash/meowfile_mac_arm64"
+  else:
+    meowfileExe = myDir + "/meowhash/meowfile_mac_x64"
+else:
+  sys.exit("Unrecognized OS: " + osSystem, file=sys.stderr)
 
 # Always retry
 from requests.adapters import HTTPAdapter
@@ -700,7 +715,7 @@ class NiraClient:
       hash = ''
       try:
         #print("HASHING FILE: " + assetpath)
-        hash = subprocess.check_output([myDir + "/meowhash/meowfile", assetpath])
+        hash = subprocess.check_output([meowfileExe, assetpath])
       except subprocess.CalledProcessError as hashExec:
         raise Exception('meowhash exe not found!')
       #print("HASHED FILE: " + assetpath)

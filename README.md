@@ -1,6 +1,3 @@
-## NOTE:
-Currently this is only supported on linux. Contact us for support on other OSes - contact@nira.app
-
 ## Nira Client
 In this repo is a collection of useful client -> server methods for Nira (niraclient.py) and an accompanying commandline tool (niracmd.py) that implements these methods.
 
