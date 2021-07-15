@@ -9,6 +9,8 @@ myDir += "/deps"
 import sys
 sys.path.insert(0, myDir)
 
+from requests_toolbelt.utils import dump
+
 from datetime import datetime
 import time
 import math
@@ -38,12 +40,29 @@ else:
 # Always retry
 from requests.adapters import HTTPAdapter
 
-s = requests.Session()
+http = requests.Session()
 from requests.packages.urllib3.util.retry import Retry
 retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 400, 401, 413, 429, 500, 501, 502, 503, 504 ])
 
-s.mount('http://', HTTPAdapter(max_retries=retries))
-s.mount('https://', HTTPAdapter(max_retries=retries))
+http.mount('http://', HTTPAdapter(max_retries=retries))
+http.mount('https://', HTTPAdapter(max_retries=retries))
+
+def responseHook(resp, *args, **kwargs):
+  global dumpRequestInfo, dumpResponseInfo
+
+  try:
+    if dumpRequestInfo:
+      data = dump.dump_request(resp, b' ', b' ')
+      print(data.decode('utf-8'), file=sys.stderr)
+
+    if dumpResponseInfo:
+      respdata = dump.dump_response(resp, b' ', b' ')
+      print(respdata.decode('utf-8'), file=sys.stderr)
+
+  except Exception as e:
+    print(str(e), file=sys.stderr)
+
+http.hooks["response"] = responseHook
 
 try:
   from urllib.parse import urlparse
@@ -72,7 +91,7 @@ class NiraClient:
   whether an asset has finished being processed by Nira, and a few other things.
   """
 
-  def __init__(self, url, apiKey, userEmail = '', uploadThreadCount = 4, uploadChunkSize = 1024 * 1024 * 10):
+  def __init__(self, url, apiKey, userEmail = '', printRequests=False, printResponses=False):
     """
     Constructor.
 
@@ -87,8 +106,10 @@ class NiraClient:
     self.url = url
     self.apiKey = apiKey
     self.userEmail = userEmail
-    self.uploadThreadCount = uploadThreadCount
-    self.uploadChunkSize = uploadChunkSize
+
+    global dumpRequestInfo, dumpResponseInfo
+    dumpRequestInfo = printRequests
+    dumpResponseInfo = printResponses
 
     if not self.url.endswith("/"):
       self.url += "/"
@@ -97,63 +118,6 @@ class NiraClient:
     self.headerParams['x-api-key'] = self.apiKey;
     if self.userEmail:
       self.headerParams['x-user-email'] = self.userEmail;
-
-  def getUserByEmail(self, email):
-    """
-    Retrieve a user account record via the email address.
-
-    Args:
-      email (str): Email address of the account you wish to retrieve
-
-    Returns:
-      User account record
-
-    Raises:
-      HTTPError: An error occurred while communicating with the Nira server.
-    """
-    usersEndpoint = self.url + "users"
-
-    userQueryParams = {
-        'email': email,
-        '$paginate': "false",
-        }
-
-    r = requests.get(url = usersEndpoint, params=userQueryParams, headers=self.headerParams)
-    r.raise_for_status()
-
-    user = r.json()
-    if len(user) > 0:
-      return user[0]
-    else:
-      return []
-
-  def getAssetsUpdatedSince(self, since):
-    """
-    Returns all assets updated since a certain timestamp value.
-    Assets get updated upon upload, when a new markup is created for that asset, or upon status change.
-
-    Args:
-      since (datetime object in UTC): Assets updated after this datetime will be returned. Must be in UTC.
-
-    Returns:
-      List of asset records that were updated at some point after the provided timestamp value
-
-    Raises:
-      HTTPError: An error occurred while communicating with the Nira server.
-    """
-    assetEndpoint = self.url + "asset"
-
-    updatedSince = since.strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
-    assetQueryParams = {
-        '$groupByFile': "true",
-        '$paginate': "false",
-        '$updatedSince': updatedSince,
-      }
-
-    r = requests.get(url = assetEndpoint, params=assetQueryParams, headers=self.headerParams)
-    r.raise_for_status()
-
-    return r.json()
 
   def getAssetJob(self, jobId):
     """
@@ -169,13 +133,13 @@ class NiraClient:
       HTTPError: An error occurred while communicating with the Nira server.
     """
     jobEndpoint   = self.url + "job" + "/" + str(jobId)
-    r = requests.get(url = jobEndpoint, headers=self.headerParams)
+    r = http.get(url = jobEndpoint, headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
 
   def assetUuidToAssetUrl(self, assetUuid):
-    uuidForUrl = base64.urlsafe_b64encode(uuid.UUID(assetUuid).bytes)
+    uuidForUrl = base64.urlsafe_b64encode(uuid.UUID(assetUuid).bytes).decode("ascii")
     uuidForUrl = uuidForUrl.replace("=", "")
     return self.formatAssetUrl(uuidForUrl)
 
@@ -218,7 +182,7 @@ class NiraClient:
 
       if updatedJob['status'] == 'complete':
         assetEndpoint = self.url + "asset/" + str(updatedJob['stageId'])
-        r = requests.get(url = assetEndpoint, headers=self.headerParams)
+        r = http.get(url = assetEndpoint, headers=self.headerParams)
         asset = r.json()
 
         uploadInfo.assetUrl = self.assetUuidToAssetUrl(asset['uuid'])
@@ -289,7 +253,7 @@ class NiraClient:
         'metadata': userMetadata,
         }
 
-    r = requests.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
+    r = http.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
     r.raise_for_status()
 
     return True
@@ -332,10 +296,26 @@ class NiraClient:
         'level': level,
         }
 
-    r = requests.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
+    r = http.get(url = metadataEndpoint, params=metadataParams, headers=self.headerParams)
     r.raise_for_status()
 
     return json.loads(r.json())
+
+  def listAssets(self, query):
+    assetEndpoint = self.url + "asset"
+
+    r = http.get(url = assetEndpoint, params=query, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def listUsers(self, query):
+    userEndpoint = self.url + "users"
+
+    r = http.get(url = userEndpoint, params=query, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
 
   def getAssetState(self, assetUrlOrShortUuid):
     """
@@ -469,7 +449,7 @@ class NiraClient:
         'json': 1,
         }
 
-    r = requests.get(url=stateEndpoint, params=stateParams, headers=self.headerParams)
+    r = http.get(url=stateEndpoint, params=stateParams, headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -516,7 +496,7 @@ class NiraClient:
         'asset_suuid': shortUuid,
         }
 
-    r = requests.put(url = stateEndpoint, params=stateParams, json=stateDict, headers=self.headerParams)
+    r = http.put(url = stateEndpoint, params=stateParams, json=stateDict, headers=self.headerParams)
     r.raise_for_status()
 
     return True
@@ -533,7 +513,7 @@ class NiraClient:
     print ("query params:" + str(assetQueryParams))
 
     assetEndpoint = self.url + "asset"
-    r = requests.get(url = assetEndpoint, params=assetQueryParams, headers=self.headerParams)
+    r = http.get(url = assetEndpoint, params=assetQueryParams, headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()[0]
@@ -582,7 +562,7 @@ class NiraClient:
         }
 
 
-    r = requests.get(url = manifestEndpoint, params=manifestParams, headers=self.headerParams)
+    r = http.get(url = manifestEndpoint, params=manifestParams, headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -642,7 +622,7 @@ class NiraClient:
           }
 
       # stream=True for efficient memory usage
-      r = requests.get(url = downloadEndpoint, params=downloadParams, headers=self.headerParams, stream=True)
+      r = http.get(url = downloadEndpoint, params=downloadParams, headers=self.headerParams, stream=True)
       r.raise_for_status()
 
       print ("Writing file:" + localFilepath + " of length:" + str(len(r.content)), file=sys.stderr)
@@ -657,7 +637,7 @@ class NiraClient:
     state = False
     return sceneFilepath, state
 
-  def uploadAsset(self, assetpaths, assetType, assetName='', assetId=0, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True, maxWaitSeconds=3600):
+  def uploadAsset(self, assetpaths, assetType, assetName, uploadThreadCount=4, uploadChunkSize = 1024 * 1024 * 20, compressTextures=False, noVertexColors=False, noNormals=False, ignoreMtl=False, useCompression=True, maxWaitSeconds=3600):
     """
     Uploads an asset file and its accompanying files to Nira.
 
@@ -704,7 +684,7 @@ class NiraClient:
         'assetname': assetName,
         }
 
-    r = requests.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
+    r = http.post(url = jobsEndpoint, data=jobCreateParams, headers=self.headerParams)
     r.raise_for_status()
     job = r.json()
 
@@ -735,13 +715,13 @@ class NiraClient:
           }
 
       #print("CREATING FILE RECORD: " + assetpath)
-      r = requests.post(url = filesEndpoint, data=fileCreateParams, headers=self.headerParams)
+      r = http.post(url = filesEndpoint, data=fileCreateParams, headers=self.headerParams)
       r.raise_for_status()
       asset = r.json()
       assets.append(asset)
 
       totalsize = os.path.getsize(filePath)
-      totalparts = (totalsize//self.uploadChunkSize) + 1
+      totalparts = (totalsize//uploadChunkSize) + 1
       #print ("totalparts: " + str(totalparts), file=sys.stderr)
 
       global compressionRatios
@@ -756,13 +736,13 @@ class NiraClient:
 
         shouldUseCompression = useCompression and zlib and not disableCompression
 
-        chunkoffset = partidx * self.uploadChunkSize
+        chunkoffset = partidx * uploadChunkSize
 
         if not hasattr(tls, 'fh'):
           tls.fh = open(filePath, 'rb')
 
         tls.fh.seek(chunkoffset)
-        chunk = tls.fh.read(self.uploadChunkSize)
+        chunk = tls.fh.read(uploadChunkSize)
 
         if not chunk:
           return
@@ -790,7 +770,7 @@ class NiraClient:
 
         headers = {}
         headers.update(self.headerParams)
-        response = requests.post(self.url + 'asset-uploads', data=fields, files=files, headers=headers)
+        response = http.post(self.url + 'asset-uploads', data=fields, files=files, headers=headers)
 
         if shouldUseCompression and not disableCompression:
           if len(compressionRatios) >= 6:
@@ -812,7 +792,7 @@ class NiraClient:
           '$paginate': 'false',
         }
 
-      r = requests.get(url = filesEndpoint, params=fileFindParams, headers=self.headerParams)
+      r = http.get(url = filesEndpoint, params=fileFindParams, headers=self.headerParams)
       r.raise_for_status()
       foundAsset = r.json()
       #print("LOOKED UP FILE: " + assetpath)
@@ -822,9 +802,9 @@ class NiraClient:
       # Only perform upload if it's not already on the server
       if not fileOnServer:
         #print("UPLOADING FILE: " + assetpath)
-        p = mp.Pool(self.uploadThreadCount)
+        p = mp.Pool(uploadThreadCount)
         p.map(sendChunk, range(0, totalparts))
-        p.map(closeHandles, range(0, self.uploadThreadCount * 4))
+        p.map(closeHandles, range(0, uploadThreadCount * 4))
         p.close()
         p.join()
 
@@ -836,7 +816,7 @@ class NiraClient:
             'qqtotalfilesize': str(totalsize),
             'qqtotalparts': str(totalparts),
             }
-        response = requests.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
+        response = http.get(self.url + 'asset-uploads-done', data=payload, headers=headers)
       else:
         #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
         pass
@@ -851,7 +831,7 @@ class NiraClient:
       if totalsize != filesizes[assetpath]:
         raise Exception('Filesize mismatch!' + str(totalsize) + ' ' +  str(filesizes[assetpath]))
 
-      r = requests.patch(url = filePatchUrl, data=filePatchParams, headers=self.headerParams)
+      r = http.patch(url = filePatchUrl, data=filePatchParams, headers=self.headerParams)
       r.raise_for_status()
 
     pp = mp.Pool(8)
@@ -863,7 +843,7 @@ class NiraClient:
         'status': "uploaded",
         'batchId': batchUuid,
         }
-    r = requests.patch(url = jobsEndpoint + "/" + str(job['id']), data=jobPatchParams, headers=self.headerParams)
+    r = http.patch(url = jobsEndpoint + "/" + str(job['id']), data=jobPatchParams, headers=self.headerParams)
     r.raise_for_status()
     assetJob = r.json()
 
