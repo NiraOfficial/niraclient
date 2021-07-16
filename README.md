@@ -75,3 +75,6 @@ Also note, the asterisk wildcard usage below is taking advantage of a shell's fi
 ```
 ./nira.py asset create cube-animation volumetric_video assets/sequence/cube*.obj assets/sequence/cube*.png
 ```
+
+## Printing HTTPS requests and responses:
+The `--print-requests` and `--print-responses` options to the `nira.py` command will cause all HTTP requests and reponses (respectively) to be printed to stderr. This is very useful if you'd like to implement the REST API calls directly using a programming language of your choice.
