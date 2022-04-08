@@ -3,28 +3,28 @@ First, download a release or clone the repo and from within the directory, run `
 
 After the configuration is complete, you can run this command to upload a small test asset to your Nira organization:
 ```
-nira.py asset create myasset photogrammetry assets/tpot.obj assets/tpot.mtl
+python nira.py asset create myasset photogrammetry assets/tpot.obj assets/tpot.mtl assets/blue.png
 ```
 If all goes well, you will see a URL printed to the screen. Open this URL to view your newly uploaded test asset.
 
-The nira.py command has many other capabilities, which are structured into nested sub-commands. To display help for the main top-level subcommands, simply run `nira.py` on its own.
+The nira.py command has many other capabilities, which are structured into nested sub-commands. To display help for the main top-level subcommands, simply run `python nira.py` on its own.
 
 After you've seen the main subcommands, you can run any subcommand on its own for details about how to use it. For example, to display help for the `asset` sub-command:
 ```
-nira.py asset
+python nira.py asset
 ```
 
 This will print all of the asset operations that can be performed. To display help for the `asset create` sub-command:
 ```
-nira.py asset create
+python nira.py asset create
 ```
 
-To print the help for all subcommands, run `nira.py --full-help` or click [here](FULL_HELP.md). Also see the [additional examples](#more-cli-usage-examples-with-details) below.
+To print the help for all subcommands, run `python nira.py --full-help` or click [here](FULL_HELP.md). Also see the [additional examples](#more-cli-usage-examples-with-details) below.
 
 ### Understanding REST calls by printing HTTPS requests and responses:
-The `--print-requests` and/or `--print-responses` options to the `nira.py` command will cause all HTTP requests and reponses to be printed to stderr. For example, this will print the HTTP request/response for publicly sharing an asset with id `M2Kdl5k66kdDBmrGgQ5DsA`:
+The `--print-requests` and/or `--print-responses` options to the `python nira.py` command will cause all HTTP requests and reponses to be printed to stderr. For example, this will print the HTTP request/response for publicly sharing an asset with id `M2Kdl5k66kdDBmrGgQ5DsA`:
 ```
-nira.py --print-requests --print-responses asset sharing set-public M2Kdl5k66kdDBmrGgQ5DsA on
+python nira.py --print-requests --print-responses asset sharing set-public M2Kdl5k66kdDBmrGgQ5DsA on
 ```
 
 This is useful if you'd like to learn how to call our REST API directly within application rather than having your application run a separate nira.py command.
@@ -54,7 +54,7 @@ Both python2/python3 are supported. All necessary dependencies are already inclu
 
 ### Upload files by providing a list of file paths on the command line:
 ```
-nira.py asset create myasset photogrammetry assets/tpot.obj assets/tpot.mtl
+python nira.py asset create myasset photogrammetry assets/tpot.obj assets/tpot.mtl
 ```
 
 The example above will create an asset "myasset" and upload tpot.obj and tpot.mtl to it.
@@ -68,7 +68,7 @@ For other file types (geomtry files, or others), a `type` can be omitted, since 
 ### Upload files by providing a json array on stdin:
 (Recommended for photogrammetry assets with photos)
 ```
-nira.py asset create "test asset" photogrammetry < file-list-example.json
+python nira.py asset create "test asset" photogrammetry < file-list-example.json
 ```
 The example above creates a photogrammetry asset called 'test asset' and uploads the following files to it:
 * An obj geometry file (tpot.obj)
@@ -76,7 +76,7 @@ The example above creates a photogrammetry asset called 'test asset' and uploads
 * A texture file (blue.png)
 * A photo (tpot-photo01.jpg)
 
-file-list-example.json (also included this repo) defines these files and their types. To show more information on the json format, run `nira.py asset create`.
+file-list-example.json (also included this repo) defines these files and their types. To show more information on the json format, run `python nira.py asset create`.
 
 Note, the command will also wait for the asset to finish processing, then print the URL to the asset on stdout.
 
@@ -84,7 +84,7 @@ Note, the command will also wait for the asset to finish processing, then print 
 
 ### Upload additional files to an asset:
 ```
-nira.py asset files add "test asset" assets/sphere.abc
+python nira.py asset files add "test asset" assets/sphere.abc
 ```
 
 This uploads an additional geometry file sphere.abc to the existing asset named 'test asset', then wait for the files to finish processing on the server and print the asset's URL:
@@ -93,22 +93,22 @@ This uploads an additional geometry file sphere.abc to the existing asset named 
 
 ### List all assets in JSON format:
 ```
-nira.py asset list
+python nira.py asset list
 ```
 
 ### List an asset called 'ball' in JSON format:
 ```
-nira.py asset list --name "ball"
+python nira.py asset list --name "ball"
 ```
 
 ### List an asset with uuid 8d3b6e4a-50b1-4282-8b57-b94d7da4fd7e in JSON format:
 ```
-nira.py asset list --uuid 8d3b6e4a-50b1-4282-8b57-b94d7da4fd7e
+python nira.py asset list --uuid 8d3b6e4a-50b1-4282-8b57-b94d7da4fd7e
 ```
 
 ### Upload a volumetric video asset:
 ```
-nira.py asset create cube-animation volumetric_video assets/sequence/cube*.obj assets/sequence/cube*.png
+python nira.py asset create cube-animation volumetric_video assets/sequence/cube*.obj assets/sequence/cube*.png
 ```
 Upload cube0001.obj through cube0006.obj and cube0001.png through cube0006.png to a new asset named cube-animation as a playback sequence (aka Volumetric Video, 4D Video, etc), then wait for the asset to finish processing on the server and print its URL.
 When uploading volumetric video, the naming scheme for the geometry files and texture files should match. For example, cube0001.obj will be matched to cube0001.png. It is also acceptable to have cube0001.obj and cube0001.obj.png.
