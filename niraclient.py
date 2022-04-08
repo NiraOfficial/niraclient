@@ -499,10 +499,10 @@ class NiraClient:
     r.raise_for_status()
     job = r.json()
 
-    if not job['uploadServiceUrl']:
-      raise Exception("uploadServiceUrl is expected in job response!")
+    if not job['uploadServiceHost']:
+      raise Exception("uploadServiceHost is expected in job response!")
 
-    uploadServiceUrl = os.getenv("NIRA_UPLOAD_SERVICE_URL") or job['uploadServiceUrl']
+    uploadServiceHost = os.getenv("NIRA_UPLOAD_SERVICE_HOST") or job['uploadServiceHost']
 
     def uploadFile(f):
       self.authorize()
@@ -603,7 +603,7 @@ class NiraClient:
 
         headers = {}
         headers.update(self.headerParams)
-        response = http.post(uploadServiceUrl + '/file-upload-part', files=mimeparts, headers=headers)
+        response = http.post("https://" + uploadServiceHost + '/file-upload-part', files=mimeparts, headers=headers)
 
         #print(response.headers)
         if shouldUseCompression and not disableCompression:
@@ -643,7 +643,7 @@ class NiraClient:
             'totalparts': totalparts,
             'meowhash': f['hash'],
             }
-        r = http.post(uploadServiceUrl + '/file-upload-done', json=payload, headers=headers)
+        r = http.post("https://" + uploadServiceHost + '/file-upload-done', json=payload, headers=headers)
         r.raise_for_status()
       else:
         #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
