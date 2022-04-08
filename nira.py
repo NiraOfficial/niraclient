@@ -327,14 +327,14 @@ def configure(args):
     print("\nIf you have a custom URL, you should still use the original .nira.app org name assigned to you when interacting with the API")
     sys.exit(1)
 
-  print("Enter your Nira API key ID, generated from within your Nira admin dashboard, e.g. 9634876d-742d-4397-aed6-744aeae696b7")
+  print("Enter your Nira API key ID, generated from within your Nira admin dashboard's API Keys section, e.g. https://your-org.nira.app/admin/apikeys")
   newNiraConfig.apiKeyId = input("Nira API key ID (36 characters): ")
 
   if len(newNiraConfig.apiKeyId) != 36:
     print("ERROR: The API key ID must be 36 characters!")
     sys.exit(1)
 
-  print("Enter your Nira API key secret, generated from within your Nira admin dashboard, e.g. 6kfkd96DaeVkrkAeejfdkdEaZkKoi842Cndkf4a2")
+  print("Enter your Nira API key secret, also generated from within your Nira admin dashboard's API Keys section")
   print("NOTE: Your API key secret will not print to the screen as you enter it!")
   newNiraConfig.apiKeySecret = getpass("Nira API key secret (40 characters, will not echo!): ")
 
