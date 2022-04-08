@@ -87,7 +87,6 @@ FILE_MAX_THREAD_COUNT = 4
 FILEPARTS_MAX_THREAD_COUNT = 4
 
 NIRA_AUTH_URL = os.getenv("NIRA_AUTH_URL") or "https://auth.nira.app"
-NIRA_UPLOAD_SERVICE_URL = os.getenv("NIRA_UPLOAD_SERVICE_URL") or "https://upload-00.nira.app"
 NIRA_CLIENT_CONFIG_PATH = os.getenv("NIRA_CLIENT_CONFIG_PATH") or os.environ['HOME'] + "/.niraclient-config"
 
 def isoUtcDateParse(isoDateStr):
@@ -118,8 +117,6 @@ class NiraConfig:
     This is not required, since it may be populated by a call to authorize()
   niraAuthUrl (string):
     For internal usage
-  niraUploadServiceUrl (string):
-    For internal usage
   """
   def __init__(self):
     self.org = ''
@@ -127,7 +124,6 @@ class NiraConfig:
     self.apiKeySecret = ''
     self.apiToken = ''
     self.niraAuthUrl = NIRA_AUTH_URL
-    self.niraUploadServiceUrl = NIRA_UPLOAD_SERVICE_URL
     self.apiTokenExpires = 0
 
   def read(self, org=None, configFile=NIRA_CLIENT_CONFIG_PATH):
@@ -153,9 +149,6 @@ class NiraConfig:
 
     if niraConfig.has_option(self.org, "niraAuthUrl"):
       self.niraAuthUrl = niraConfig.get(self.org, "niraAuthUrl")
-
-    if niraConfig.has_option(self.org, "niraUploadServiceUrl"):
-      self.niraUploadServiceUrl = niraConfig.get(self.org, "niraUploadServiceUrl")
 
   def write(self, configFile=NIRA_CLIENT_CONFIG_PATH, forceDefaultOrgWrite=False):
     niraConfigForWriting = ConfigParser()
@@ -201,9 +194,6 @@ class NiraConfig:
 
     if not self.niraAuthUrl:
       raise Exception("niraAuthUrl must be defined!")
-
-    if not self.niraUploadServiceUrl:
-      raise Exception("niraUploadServiceUrl must be defined!")
 
 class NiraClient:
   """
@@ -509,6 +499,11 @@ class NiraClient:
     r.raise_for_status()
     job = r.json()
 
+    if not job['uploadServiceUrl']:
+      raise Exception("uploadServiceUrl is expected in job response!")
+
+    uploadServiceUrl = os.getenv("NIRA_UPLOAD_SERVICE_URL") or job['uploadServiceUrl']
+
     def uploadFile(f):
       self.authorize()
 
@@ -608,7 +603,7 @@ class NiraClient:
 
         headers = {}
         headers.update(self.headerParams)
-        response = http.post(self.config.niraUploadServiceUrl + '/file-upload-part', files=mimeparts, headers=headers)
+        response = http.post(uploadServiceUrl + '/file-upload-part', files=mimeparts, headers=headers)
 
         #print(response.headers)
         if shouldUseCompression and not disableCompression:
@@ -648,7 +643,7 @@ class NiraClient:
             'totalparts': totalparts,
             'meowhash': f['hash'],
             }
-        r = http.post(self.config.niraUploadServiceUrl + '/file-upload-done', json=payload, headers=headers)
+        r = http.post(uploadServiceUrl + '/file-upload-done', json=payload, headers=headers)
         r.raise_for_status()
       else:
         #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
