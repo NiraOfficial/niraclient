@@ -19,7 +19,7 @@ This will print all of the asset operations that can be performed. To display he
 nira.py asset create
 ```
 
-To print the help for all subcommands, run `nira.py --full-help` or click [here](FULL_HELP.md).
+To print the help for all subcommands, run `nira.py --full-help` or click [here](FULL_HELP.md). Also see the [additional examples](#more-cli-usage-examples-with-details) below.
 
 ### Understanding REST calls by printing HTTPS requests and responses:
 The `--print-requests` and/or `--print-responses` options to the `nira.py` command will cause all HTTP requests and reponses to be printed to stderr. For example, this will print the HTTP request/response for publicly sharing an asset with id `M2Kdl5k66kdDBmrGgQ5DsA`:
@@ -35,7 +35,7 @@ This is useful if you'd like to learn how to call our REST API directly within a
 This repo includes:
 
 #### nira.py
-A commandline Nira client tool for performing Nira tasks on the command-line. Run it with `--help` for usage details. Also see the [Quick Start](#quick-start) section below.
+A commandline Nira client tool for performing Nira tasks on the command-line.
 
 #### niraclient.py
 Includes the implementation of the API calls. Some inline documentation can be found in the file. This could be imported and used by a larger python application, though we do reserve the right to change its interface, so please bear that in mind.
