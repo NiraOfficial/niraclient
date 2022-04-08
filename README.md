@@ -1,5 +1,5 @@
 ## Quick Start:
-First, download or clone the repo and in a terminal run `nira.py configure`, which will guide you through the process of providing your API key and secret.
+First, download a release or clone the repo and from within the directory, run `python nira.py configure` on a terminal, which will guide you through the process of providing your API key and secret.
 
 After the configuration is complete, you can run this command to upload a small test asset to your Nira organization:
 ```
