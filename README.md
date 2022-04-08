@@ -31,8 +31,8 @@ This is useful if you'd like to learn how to call our REST API directly within a
 
 > Tip: If you're planning to implement a custom uploader for Nira rather than using nira.py, we suggest reaching out to contact@nira.app and describing your usecase so we can provide you with additional guidance and documentation.
 
-# Architecture:
-This repo includes
+## Details
+This repo includes:
 
 #### nira.py
 A commandline Nira client tool for performing Nira tasks on the command-line. Run it with `--help` for usage details. Also see the [Quick Start](#quick-start) section below.
@@ -47,7 +47,7 @@ Currently, capabilities include:
 * Changing an asset's sharing properties
 * More coming soon
 
-## Dependencies
+#### Dependencies
 Both python2/python3 are supported. All necessary dependencies are already included in this repo under the `deps` directory; You should not need to run `pip`, so please let us know if you do. :)
 
 ## More CLI Usage Examples with details
