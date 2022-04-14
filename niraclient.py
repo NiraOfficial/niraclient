@@ -227,6 +227,7 @@ class NiraClient:
     self.config = niraConfig
 
     self.headerParams['User-Agent'] = 'niraclient.py'
+    self.headerParams['Content-Type'] = 'application/json'
 
     if self.config is None:
       self.config = NiraConfig()
@@ -407,7 +408,7 @@ class NiraClient:
 
     shareAssetEndpoint = self.url + "api/assets/{suuid}/sharing/users".format(suuid = shortAssetUuid)
 
-    r = http.post(url = shareAssetEndpoint, json=shareAssetData, headers=self.headerParams)
+    r = http.post(url = shareAssetEndpoint, data=json.dumps(shareAssetData), headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -426,7 +427,7 @@ class NiraClient:
         'name': name
       })
 
-    r = http.post(url = preauthUserEndpoint, json=requestBody, headers=self.headerParams)
+    r = http.post(url = preauthUserEndpoint, data=json.dumps(requestBody), headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -436,7 +437,7 @@ class NiraClient:
 
     setPublicEndpoint = self.url + "api/assets/{suuid}/sharing".format(suuid = shortAssetUuid)
 
-    r = http.patch(url = setPublicEndpoint, json={ 'isPublic': isPublic }, headers=self.headerParams)
+    r = http.patch(url = setPublicEndpoint, data=json.dumps({ 'isPublic': isPublic }), headers=self.headerParams)
     r.raise_for_status()
 
     return r.json()
@@ -495,7 +496,7 @@ class NiraClient:
         'assetname': assetName,
         }
 
-    r = http.post(url = jobsEndpoint, json=jobCreateParams, headers=self.headerParams)
+    r = http.post(url = jobsEndpoint, data=json.dumps(jobCreateParams), headers=self.headerParams)
     r.raise_for_status()
     job = r.json()
 
@@ -543,7 +544,7 @@ class NiraClient:
         })
 
       #print("CREATING FILE RECORD: " + assetpath)
-      r = http.post(url = filesEndpoint, json=fileCreateParams, headers=self.headerParams)
+      r = http.post(url = filesEndpoint, data=json.dumps(fileCreateParams), headers=self.headerParams)
       r.raise_for_status()
       fileRecord = r.json()
 
@@ -643,7 +644,7 @@ class NiraClient:
             'totalparts': totalparts,
             'meowhash': f['hash'],
             }
-        r = http.post("https://" + uploadServiceHost + '/file-upload-done', json=payload, headers=headers)
+        r = http.post("https://" + uploadServiceHost + '/file-upload-done', data=json.dumps(payload), headers=headers)
         r.raise_for_status()
       else:
         #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
@@ -658,7 +659,7 @@ class NiraClient:
         'status': "uploaded",
         'batchId': batchUuid,
         }
-    r = http.patch(url = jobsEndpoint + "/" + str(job['id']), json=jobPatchParams, headers=self.headerParams)
+    r = http.patch(url = jobsEndpoint + "/" + str(job['id']), data=json.dumps(jobPatchParams), headers=self.headerParams)
     r.raise_for_status()
     assetJob = r.json()
 
