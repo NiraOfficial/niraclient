@@ -87,7 +87,7 @@ FILE_MAX_THREAD_COUNT = 4
 FILEPARTS_MAX_THREAD_COUNT = 4
 
 NIRA_AUTH_URL = os.getenv("NIRA_AUTH_URL") or "https://auth.nira.app"
-NIRA_CLIENT_CONFIG_PATH = os.getenv("NIRA_CLIENT_CONFIG_PATH") or os.environ['HOME'] + "/.niraclient-config"
+NIRA_CLIENT_CONFIG_PATH = (os.getenv("NIRA_CLIENT_CONFIG_PATH") or os.path.expanduser('~') or os.environ['HOME']) + "/.niraclient-config"
 
 def isoUtcDateParse(isoDateStr):
   """
@@ -521,7 +521,7 @@ class NiraClient:
       if len(hash) != 36:
         raise Exception('meowhash result unexpected found! result: ' + hash)
 
-      f['hash'] = hash
+      f['hash'] = str(hash, "UTF-8")
       fileUuid=str(uuid.uuid4())
       fileName = os.path.basename(f['path'])
       userpath = os.path.dirname(f['path'])
