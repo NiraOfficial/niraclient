@@ -166,6 +166,7 @@ userPreauthParser.add_argument('email', type=str, help='User email')
 def addUploadOptionsToParser(thisParser):
   thisParser.add_argument('--no-upload-compression', action='store_false', dest='use_upload_compression', help="Disables the use of automatic upload compression. Upload compression is enabled by default. You may wish to disable it if you have a particularly capable upstream network throughput (1gbps+) or have concerns about CPU utilization on the machine doing the uploading.")
   thisParser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=3600, type=int, help='When using --upload, wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. If set to 0, the command will return immediately after upload, and asset processing will not have finished yet. Note, --upload will not print an asset url unless the asset has finished processing, so it is best to use a sufficiently large value for this argument. If an error occurs during upload or processing, the command will exit with a non-zero status and print an error message.')
+  thisParser.add_argument('--dccname', dest='dccname', choices=["3dfzephyr", "djiterra", "agisoft", "contextcapture", "pix4d", "realitycapture", "mantisvision"], help='Specify the name of the dcc used to create the files that you are uploading. This allows Nira to set an appropriate Coordinate System (ZY up).')
 
 assetCreateParser = assetSubParser.add_parser('create', help='Create a new asset, upload the provided files to it, then print a URL to the resulting asset on stdout or an error message if unsuccessful.', formatter_class=SmartFormatter)
 assetCreateParser.add_argument('name', type=str, metavar='asset_name', help='A name for the asset. If an asset with this name already exists, an error message will be printed. If you wish to add files to an existing asset, use the addfiles command, instead.')
@@ -254,7 +255,7 @@ def assetCreate(args):
 
     files = json.loads(filesStr)
 
-  uploadInfo = nirac.uploadAsset(files, args.type, args.name, useCompression=args.use_upload_compression, maxWaitSeconds=args.wait_max_seconds)
+  uploadInfo = nirac.uploadAsset(files, args.type, args.name, dccname=args.dccname, useCompression=args.use_upload_compression, maxWaitSeconds=args.wait_max_seconds)
 
   if uploadInfo.jobStatus == NiraJobStatus.Processed:
     print(uploadInfo.assetUrl)
@@ -288,7 +289,7 @@ def assetFilesAdd(args):
 
     files = json.loads(filesStr)
 
-  uploadInfo = nirac.uploadAsset(files, asset['type'], asset['name'], useCompression=args.use_upload_compression, maxWaitSeconds=args.wait_max_seconds)
+  uploadInfo = nirac.uploadAsset(files, asset['type'], asset['name'], dccname=args.dccname, useCompression=args.use_upload_compression, maxWaitSeconds=args.wait_max_seconds)
 
   if uploadInfo.jobStatus == NiraJobStatus.Processed:
     print(uploadInfo.assetUrl)

@@ -441,7 +441,7 @@ class NiraClient:
 
     return r.json()
 
-  def uploadAsset(self, files, assetType, assetName, useCompression=True, maxWaitSeconds=3600):
+  def uploadAsset(self, files, assetType, assetName, dccname='', useCompression=True, maxWaitSeconds=3600):
     """
     Creates an asset if necessary, and uploads the specified files to it.
 
@@ -494,6 +494,11 @@ class NiraClient:
         'batchId': batchUuid,
         'assetname': assetName,
         }
+
+    if dccname:
+      jobCreateParams.update({
+        'dccname': dccname
+      })
 
     r = http.post(url = jobsEndpoint, json=jobCreateParams, headers=self.headerParams)
     r.raise_for_status()
