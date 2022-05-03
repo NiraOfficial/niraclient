@@ -526,7 +526,11 @@ class NiraClient:
       if len(hash) != 36:
         raise Exception('meowhash result unexpected found! result: ' + hash)
 
-      f['hash'] = str(hash, "UTF-8")
+      if sys.version_info[0] == 2:
+        f['hash'] = hash
+      else:
+        f['hash'] = str(hash, "UTF-8")
+
       fileUuid=str(uuid.uuid4())
       fileName = os.path.basename(f['path'])
       userpath = os.path.dirname(f['path'])
