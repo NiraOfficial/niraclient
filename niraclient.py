@@ -131,7 +131,7 @@ class NiraConfig:
     self.apiTokenExpires = 0
 
   def read(self, org=None, configFile=NIRA_CLIENT_CONFIG_PATH):
-    niraConfig = ConfigParser()
+    niraConfig = configparser.ConfigParser()
     niraConfig.read(configFile)
 
     self.org = org
@@ -155,7 +155,7 @@ class NiraConfig:
       self.niraAuthUrl = niraConfig.get(self.org, "niraAuthUrl")
 
   def write(self, configFile=NIRA_CLIENT_CONFIG_PATH, forceDefaultOrgWrite=False):
-    niraConfigForWriting = ConfigParser()
+    niraConfigForWriting = configparser.ConfigParser()
     niraConfigForWriting.read(configFile)
 
     if not niraConfigForWriting.has_section(self.org):
