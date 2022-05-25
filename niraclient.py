@@ -23,7 +23,11 @@ import subprocess
 import base64
 import uuid
 import platform
-from configparser import ConfigParser
+
+try:
+  import configparser as configparser
+except Exception:
+  import ConfigParser as configparser
 
 osSystem = platform.system()
 
