@@ -145,6 +145,7 @@ parser.add_argument('--print-requests', dest='print_requests', action='store_tru
 parser.add_argument('--print-responses', dest='print_responses', action='store_true', default=False, help="Print HTTP requests stderr. Useful for leaning about the API, or for debugging purposes")
 parser.add_argument('--print-and-dump-requests', dest='print_and_dump_requests', action='store_true', default=False, help="Print HTTP requests stderr and also dump the requests to 'request-body-NNN' files in your current directory. Useful for inspecting large request bodies such as file part upload requests")
 parser.add_argument('--org', type=str, dest='org', default=None, help="Your Nira organization name, including the domain name. This is only for advanced usage where multiple orgs are being used.")
+parser.add_argument('--request-api-token-expiration-time', type=int, dest='request_api_token_expiration_time', default=None, help="Specify the API token expiration time, in seconds. The default is 14400 (4 hours). Specifying 0 requests a very long expiration time (20 years), which is useful for advanced use-cases.")
 
 subparsers = parser.add_subparsers(help='Operation', dest='Operation')
 subparsers.required = True
@@ -207,7 +208,7 @@ addUploadOptionsToParser(assetAddfilesParser)
 
 def getNiraClient(args):
   try:
-    niraClient = NiraClient(org=args.org, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests)
+    niraClient = NiraClient(org=args.org, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
     return niraClient
   except Exception as e:
     print("ERROR: " + str(e))
@@ -343,7 +344,7 @@ def configure(args):
     print("ERROR: The API key secret must be 40 characters (You entered %)!" % len(newNiraConfig.apiKeySecret))
     sys.exit(1)
 
-  nirac = NiraClient(niraConfig=newNiraConfig, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests)
+  nirac = NiraClient(niraConfig=newNiraConfig, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
   nirac.authorize() # This will raise if the authorization fails
   newNiraConfig.write()
 

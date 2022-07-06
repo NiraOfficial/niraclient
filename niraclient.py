@@ -207,7 +207,7 @@ class NiraClient:
   whether an asset has finished being processed by Nira, and a few other things.
   """
 
-  def __init__(self, niraConfig=None, org=None, configFilePath=NIRA_CLIENT_CONFIG_PATH, printRequests=False, printResponses=False, printAndDumpRequests=False):
+  def __init__(self, niraConfig=None, org=None, configFilePath=NIRA_CLIENT_CONFIG_PATH, printRequests=False, printResponses=False, printAndDumpRequests=False, requestApiTokenExpirationTime=None):
     """
     Constructor.
 
@@ -229,6 +229,7 @@ class NiraClient:
     self.configFilePath = configFilePath
     self.headerParams = {}
     self.config = niraConfig
+    self.requestApiTokenExpirationTime = requestApiTokenExpirationTime
 
     self.headerParams['User-Agent'] = 'niraclient.py'
 
@@ -266,6 +267,9 @@ class NiraClient:
 
     if not self.config.apiToken or not self.isValidExpireTime(self.config.apiTokenExpires):
       authEndpoint = self.config.niraAuthUrl + "/api-key-auth"
+
+      if self.requestApiTokenExpirationTime is not None:
+        authEndpoint += "?expires=" + str(self.requestApiTokenExpirationTime)
 
       headers = {}
       headers['x-nira-org'] = self.config.org
