@@ -402,6 +402,16 @@ class NiraClient:
 
     return r.json()
 
+  def deleteAsset(self, shortAssetUuid):
+    self.authorize()
+
+    deleteAssetEndpoint = self.url + "api/assets/{suuid}".format(suuid = shortAssetUuid)
+
+    r = http.delete(url = deleteAssetEndpoint, headers=self.headerParams)
+    r.raise_for_status()
+
+    return
+
   def shareAsset(self, shortAssetUuid, email, role, expirationDate=None):
     self.authorize()
 

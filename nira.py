@@ -175,6 +175,9 @@ assetCreateParser.add_argument('type', choices=["default", "sculpt", "photogramm
 assetCreateParser.add_argument('files', default=[], nargs='*', type=str, help=uploadFilesHelpText)
 addUploadOptionsToParser(assetCreateParser)
 
+assetDeleteParser = assetSubParser.add_parser('delete', help='Delete an existing asset')
+assetDeleteParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid for an existing asset (22 characters). If an asset with this short uuid does not exist, an error message will be printed.')
+
 assetSharingParser = assetSubParser.add_parser('sharing', help='Perform asset sharing related operations')
 assetSharingSubParser = assetSharingParser.add_subparsers(help='Asset sharing related operations', dest='AssetSharingOperation')
 assetSharingSubParser.required = True
@@ -230,6 +233,13 @@ def assetShare(args):
   asset_invitation = nirac.shareAsset(args.asset_short_uuid, args.user_email, args.role, args.expiration_date)
 
   print(str(json.dumps(asset_invitation, indent=2)))
+
+  sys.exit(1)
+
+def assetDelete(args):
+  nirac = getNiraClient(args)
+
+  nirac.deleteAsset(args.asset_short_uuid)
 
   sys.exit(1)
 
@@ -363,6 +373,7 @@ def configure(args):
       print("Keeping existing default org %s" %curNiraConfig.org)
 
 assetCreateParser.set_defaults(func=assetCreate)
+assetDeleteParser.set_defaults(func=assetDelete)
 assetShareUserAddParser.set_defaults(func=assetShare)
 assetSetPublicParser.set_defaults(func=assetSetPublic)
 assetAddfilesParser.set_defaults(func=assetFilesAdd)
