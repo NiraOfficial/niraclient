@@ -500,9 +500,16 @@ class NiraClient:
         zlib = None
         print("Warning: Python zlib module is not available! Consider installing it for improved upload speeds.", file=sys.stderr)
 
+    useFetching = False
+
     for f in files:
-      if not os.path.exists(f['path']):
-        raise IOError('File not found: ' + f['path'])
+      if 'fetchurl' in f:
+        useFetching = True
+
+    if not useFetching:
+      for f in files:
+        if not os.path.exists(f['path']):
+          raise IOError('File not found: ' + f['path'])
 
     batchUuid = str(uuid.uuid4())
 
@@ -518,178 +525,183 @@ class NiraClient:
         'dccname': dccname
       })
 
+    if useFetching:
+      jobCreateParams.update({
+        'fetchfiles': files
+      })
+
     r = http.post(url = jobsEndpoint, json=jobCreateParams, headers=self.headerParams)
     r.raise_for_status()
     job = r.json()
 
-    if not job['uploadServiceHost']:
-      raise Exception("uploadServiceHost is expected in job response!")
+    if not useFetching:
+      if not job['uploadServiceHost']:
+        raise Exception("uploadServiceHost is expected in job response!")
 
-    uploadServiceHost = os.getenv("NIRA_UPLOAD_SERVICE_HOST") or job['uploadServiceHost']
+      uploadServiceHost = os.getenv("NIRA_UPLOAD_SERVICE_HOST") or job['uploadServiceHost']
 
-    def uploadFile(f):
-      self.authorize()
+      def uploadFile(f):
+        self.authorize()
 
-      f['size'] = os.path.getsize(f['path'])
+        f['size'] = os.path.getsize(f['path'])
 
-      hash = ''
+        hash = ''
 
-      try:
-        #print("HASHING FILE: " + assetpath)
-        hash = subprocess.check_output([meowfileExe, f['path']])
-      except subprocess.CalledProcessError as hashExec:
-        raise Exception('meowhash exe not found!')
-      #print("HASHED FILE: " + assetpath)
+        try:
+          #print("HASHING FILE: " + assetpath)
+          hash = subprocess.check_output([meowfileExe, f['path']])
+        except subprocess.CalledProcessError as hashExec:
+          raise Exception('meowhash exe not found!')
+        #print("HASHED FILE: " + assetpath)
 
-      if len(hash) != 36:
-        raise Exception('meowhash result unexpected found! result: ' + hash)
+        if len(hash) != 36:
+          raise Exception('meowhash result unexpected found! result: ' + hash)
 
-      if sys.version_info[0] == 2:
-        f['hash'] = hash
-      else:
-        f['hash'] = str(hash, "UTF-8")
+        if sys.version_info[0] == 2:
+          f['hash'] = hash
+        else:
+          f['hash'] = str(hash, "UTF-8")
 
-      fileUuid=str(uuid.uuid4())
-      fileName = os.path.basename(f['path'])
-      userpath = os.path.dirname(f['path'])
+        fileUuid=str(uuid.uuid4())
+        fileName = os.path.basename(f['path'])
+        userpath = os.path.dirname(f['path'])
 
-      #print("LOOKING UP FILE: " + assetpath)
+        #print("LOOKING UP FILE: " + assetpath)
 
-      fileCreateParams = {
-          'fileName': fileName,
-          'userpath': userpath,
-          'uuid': fileUuid,
-          'jobId': job['id'],
-          'meowhash': f['hash'],
-          'filesize': f['size'],
-          }
+        fileCreateParams = {
+            'fileName': fileName,
+            'userpath': userpath,
+            'uuid': fileUuid,
+            'jobId': job['id'],
+            'meowhash': f['hash'],
+            'filesize': f['size'],
+            }
 
-      if 'type' in f:
-        fileCreateParams.update({
-          'type': f['type']
-        })
+        if 'type' in f:
+          fileCreateParams.update({
+            'type': f['type']
+          })
 
-      #print("CREATING FILE RECORD: " + assetpath)
-      r = http.post(url = filesEndpoint, json=fileCreateParams, headers=self.headerParams)
-      r.raise_for_status()
-      fileRecord = r.json()
+        #print("CREATING FILE RECORD: " + assetpath)
+        r = http.post(url = filesEndpoint, json=fileCreateParams, headers=self.headerParams)
+        r.raise_for_status()
+        fileRecord = r.json()
 
-      # Determine if the file is already available on the server
-      fileAlreadyOnServer = fileRecord['status'] == 'ready_for_processing'
+        # Determine if the file is already available on the server
+        fileAlreadyOnServer = fileRecord['status'] == 'ready_for_processing'
 
-      totalsize = f['size']
-      totalparts = (totalsize//UPLOAD_CHUNK_SIZE) + 1
-      #print ("totalparts: " + str(totalparts), file=sys.stderr)
+        totalsize = f['size']
+        totalparts = (totalsize//UPLOAD_CHUNK_SIZE) + 1
+        #print ("totalparts: " + str(totalparts), file=sys.stderr)
 
-      global compressionRatios
-      global disableCompression
-
-      compressionRatios = []
-      disableCompression = False
-
-      def sendChunk(partidx):
         global compressionRatios
         global disableCompression
 
-        shouldUseCompression = useCompression and zlib and not disableCompression
+        compressionRatios = []
+        disableCompression = False
 
-        chunkoffset = partidx * UPLOAD_CHUNK_SIZE
+        def sendChunk(partidx):
+          global compressionRatios
+          global disableCompression
 
-        if not hasattr(tls, 'fh'):
-          tls.fh = open(f['path'], 'rb')
+          shouldUseCompression = useCompression and zlib and not disableCompression
 
-        tls.fh.seek(chunkoffset)
-        chunk = tls.fh.read(UPLOAD_CHUNK_SIZE)
+          chunkoffset = partidx * UPLOAD_CHUNK_SIZE
 
-        if not chunk:
-          return
+          if not hasattr(tls, 'fh'):
+            tls.fh = open(f['path'], 'rb')
 
-        if shouldUseCompression:
-          compressedChunk = zlib.compress(chunk, 1)
-          compressionRatio = float(len(compressedChunk)) / len(chunk)
-          compressionRatios.append(compressionRatio)
-          chunk = compressedChunk
+          tls.fh.seek(chunkoffset)
+          chunk = tls.fh.read(UPLOAD_CHUNK_SIZE)
 
-        filechunkparams={
-          'uuid': fileUuid,
-          'chunksize': len(chunk),
-          'filename': fileName,
-          'partindex': partidx,
-          'partbyteoffset': chunkoffset,
-          'totalparts': totalparts,
-          'totalfilesize': totalsize,
-          }
+          if not chunk:
+            return
 
-        if shouldUseCompression:
-          filechunkparams.update({'compression': 'deflate'})
+          if shouldUseCompression:
+            compressedChunk = zlib.compress(chunk, 1)
+            compressionRatio = float(len(compressedChunk)) / len(chunk)
+            compressionRatios.append(compressionRatio)
+            chunk = compressedChunk
 
-        mimeparts={
-            'params': (None, json.dumps(filechunkparams), 'application/json'),
-            'data': (fileName, chunk, 'application/octet-stream'),
-            }
-
-        headers = {}
-        headers.update(self.headerParams)
-        response = http.post("https://" + uploadServiceHost + '/file-upload-part', files=mimeparts, headers=headers)
-
-        #print(response.headers)
-        if shouldUseCompression and not disableCompression:
-          # Collect several chunks of results before checking the ratio.
-          # If the compression ratio is poor, it's a waste of resources, so don't continue using it
-          # on other parts of this file.
-          if len(compressionRatios) >= 6:
-            avgCompressionRatio = sum(compressionRatios) / len(compressionRatios)
-            if avgCompressionRatio >= 0.9:
-              disableCompression = True
-              #print ("Info: \"" + fileName + "\" compresses poorly (ratio: %.3f" % (1/avgCompressionRatio) + "). Skipping upload compression for this file.", file=sys.stderr)
-
-      def closeHandles(threadid):
-        if hasattr(tls, 'fh'):
-          tls.fh.close()
-          delattr(tls, 'fh')
-
-      # Only perform upload if it's not already on the server
-      if not fileAlreadyOnServer:
-        #print("UPLOADING FILE: " + assetpath)
-        p = mp.Pool(FILEPARTS_MAX_THREAD_COUNT)
-        p.map(sendChunk, range(0, totalparts))
-
-        # Note: I believe these handles should close themselves,
-        # since an mp.Pool manages processes, not threads.
-        p.map(closeHandles, range(0, FILEPARTS_MAX_THREAD_COUNT * 4))
-
-        p.close()
-        p.join()
-
-        headers = {}
-        headers.update(self.headerParams)
-        payload={
+          filechunkparams={
             'uuid': fileUuid,
+            'chunksize': len(chunk),
             'filename': fileName,
-            'totalfilesize': totalsize,
+            'partindex': partidx,
+            'partbyteoffset': chunkoffset,
             'totalparts': totalparts,
-            'meowhash': f['hash'],
+            'totalfilesize': totalsize,
             }
-        r = http.post("https://" + uploadServiceHost + '/file-upload-done', json=payload, headers=headers)
-        r.raise_for_status()
-      else:
-        #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
-        pass
 
-    pp = mp.Pool(FILE_MAX_THREAD_COUNT)
-    pp.map(uploadFile, files)
-    pp.close()
-    pp.join()
+          if shouldUseCompression:
+            filechunkparams.update({'compression': 'deflate'})
 
-    jobPatchParams = {
-        'status': "uploaded",
-        'batchId': batchUuid,
-        }
-    r = http.patch(url = jobsEndpoint + "/" + str(job['id']), json=jobPatchParams, headers=self.headerParams)
-    r.raise_for_status()
-    assetJob = r.json()
+          mimeparts={
+              'params': (None, json.dumps(filechunkparams), 'application/json'),
+              'data': (fileName, chunk, 'application/octet-stream'),
+              }
 
-    uploadInfo = self.waitForAssetProcessing(assetJob['id'], timeoutSeconds = maxWaitSeconds)
+          headers = {}
+          headers.update(self.headerParams)
+          response = http.post("https://" + uploadServiceHost + '/file-upload-part', files=mimeparts, headers=headers)
+
+          #print(response.headers)
+          if shouldUseCompression and not disableCompression:
+            # Collect several chunks of results before checking the ratio.
+            # If the compression ratio is poor, it's a waste of resources, so don't continue using it
+            # on other parts of this file.
+            if len(compressionRatios) >= 6:
+              avgCompressionRatio = sum(compressionRatios) / len(compressionRatios)
+              if avgCompressionRatio >= 0.9:
+                disableCompression = True
+                #print ("Info: \"" + fileName + "\" compresses poorly (ratio: %.3f" % (1/avgCompressionRatio) + "). Skipping upload compression for this file.", file=sys.stderr)
+
+        def closeHandles(threadid):
+          if hasattr(tls, 'fh'):
+            tls.fh.close()
+            delattr(tls, 'fh')
+
+        # Only perform upload if it's not already on the server
+        if not fileAlreadyOnServer:
+          #print("UPLOADING FILE: " + assetpath)
+          p = mp.Pool(FILEPARTS_MAX_THREAD_COUNT)
+          p.map(sendChunk, range(0, totalparts))
+
+          # Note: I believe these handles should close themselves,
+          # since an mp.Pool manages processes, not threads.
+          p.map(closeHandles, range(0, FILEPARTS_MAX_THREAD_COUNT * 4))
+
+          p.close()
+          p.join()
+
+          headers = {}
+          headers.update(self.headerParams)
+          payload={
+              'uuid': fileUuid,
+              'filename': fileName,
+              'totalfilesize': totalsize,
+              'totalparts': totalparts,
+              'meowhash': f['hash'],
+              }
+          r = http.post("https://" + uploadServiceHost + '/file-upload-done', json=payload, headers=headers)
+          r.raise_for_status()
+        else:
+          #print("SKIPPING FILE UPLOAD (hash match): " + assetpath)
+          pass
+
+      pp = mp.Pool(FILE_MAX_THREAD_COUNT)
+      pp.map(uploadFile, files)
+      pp.close()
+      pp.join()
+
+      jobPatchParams = {
+          'status': "uploaded",
+          'batchId': batchUuid,
+          }
+      r = http.patch(url = jobsEndpoint + "/" + str(job['id']), json=jobPatchParams, headers=self.headerParams)
+      r.raise_for_status()
+
+    uploadInfo = self.waitForAssetProcessing(job['id'], timeoutSeconds = maxWaitSeconds)
 
     return uploadInfo
 

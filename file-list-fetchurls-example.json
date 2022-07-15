@@ -1,0 +1,19 @@
+[{
+  "name": "tpot.obj",
+  "fetchurl": "https://nira-source-asset-examples.s3.us-west-002.backblazeb2.com/1b3433555d373c08?mock-signed-url=1",
+  "xxhash64": "1b3433555d373c08"
+}, {
+  "name": "tpot.mtl",
+  "fetchurl": "https://nira-source-asset-examples.s3.us-west-002.backblazeb2.com/fb9f43a9f15dbc8a?mock-signed-url=1",
+  "xxhash64": "fb9f43a9f15dbc8a"
+}, {
+  "name": "red.png",
+  "type": "image",
+  "fetchurl": "https://nira-source-asset-examples.s3.us-west-002.backblazeb2.com/24b66ce1945d11e8?mock-signed-url=1",
+  "xxhash64": "24b66ce1945d11e8"
+}, {
+  "name": "blue.png",
+  "type": "image",
+  "fetchurl": "https://nira-source-asset-examples.s3.us-west-002.backblazeb2.com/27f86bd330af429b?mock-signed-url=1",
+  "xxhash64": "27f86bd330af429b"
+}]

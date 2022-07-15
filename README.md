@@ -82,6 +82,28 @@ Note, the command will also wait for the asset to finish processing, then print 
 
 > Tip: The last 22 characters of the printed URL can be used as the identifier in a Nira embed.
 
+### Server-side fetch
+> Server-side fetch is an Enterprise-only feature. [Contact us](https://nira.app/contact) before using it in production
+
+If your files are already in a location accessible by our servers (e.g. an object storage bucket),
+you can provide a url for each file and we will fetch them rather than you needing to upload them.
+
+To try this using some provided sample file URLs, run:
+```
+python nira.py asset create "test asset" photogrammetry < file-list-fetchurls-example.json
+```
+
+file-list-fetchurls-example.json (also included this repo) defines the each file's name, type, and fetchurl.
+
+Tips
+* If you're using presigned URLs for your files, 4 hours should be safe. Typically download/processing
+will take far less than this, but it's usually best to have some wiggle room. That said, feel free to
+experiment with lower expiration times if your security policies dictate them.
+
+* The example command above will work for any account type with API capabilities, but using the feature with your
+own file sources requires an enterprise account and a configuration step on our end. Please [contact us](https://nira.app/contact)
+if you'd like to use this feature in production.
+
 ### Upload additional files to an asset:
 ```
 python nira.py asset files add "test asset" assets/sphere.abc
