@@ -45,6 +45,7 @@ Currently, capabilities include:
 * Adding files to existing assets
 * Listing assets
 * Changing an asset's sharing properties
+* Server-side fetching from your HTTPS file source (e.g. object storage) instead of uploading. [More details below.](#server-side-fetch)
 * More coming soon
 
 #### Dependencies
@@ -94,8 +95,10 @@ python nira.py asset create "test asset" photogrammetry < file-list-fetchurls-ex
 ```
 
 file-list-fetchurls-example.json (also included this repo) defines the each file's name, type, and fetchurl.
+server-side fetch currently expects a xxhash64 to be provided for each file, but support for other hash types,
+HTTP header provided hashes, or no hashes at all can be added easily upon request ([contact us](https://nira.app/contact)).
 
-Tips
+Important Notes:
 * If you're using presigned URLs for your files, 4 hours should be safe. Typically download/processing
 will take far less than this, but it's usually best to have some wiggle room. That said, feel free to
 experiment with lower expiration times if your security policies dictate them.
