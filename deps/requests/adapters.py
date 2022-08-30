@@ -161,8 +161,14 @@ class HTTPAdapter(BaseAdapter):
         self._pool_maxsize = maxsize
         self._pool_block = block
 
+        # Force use of the OS ca certs
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.load_default_certs()
+
         self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize,
-                                       block=block, strict=True, **pool_kwargs)
+                                       block=block, strict=True, ssl_context=ssl_context,
+                                       **pool_kwargs)
 
     def proxy_manager_for(self, proxy, **proxy_kwargs):
         """Return urllib3 ProxyManager for the given proxy.
@@ -238,6 +244,9 @@ class HTTPAdapter(BaseAdapter):
             conn.cert_reqs = 'CERT_NONE'
             conn.ca_certs = None
             conn.ca_cert_dir = None
+
+        # Force usage of the OS ca_certs
+        conn.ca_certs = None
 
         if cert:
             if not isinstance(cert, basestring):
