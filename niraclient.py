@@ -701,7 +701,13 @@ class NiraClient:
       r = http.patch(url = jobsEndpoint + "/" + str(job['id']), json=jobPatchParams, headers=self.headerParams)
       r.raise_for_status()
 
-    uploadInfo = self.waitForAssetProcessing(job['id'], timeoutSeconds = maxWaitSeconds)
+    if maxWaitSeconds > 0:
+      uploadInfo = self.waitForAssetProcessing(job['id'], timeoutSeconds = maxWaitSeconds)
+    else:
+      uploadInfo = NiraUploadInfo()
+      uploadInfo.assetJobId = job['id']
+      uploadInfo.jobStatus = NiraJobStatus.Pending
+      uploadInfo.assetUrl = self.formatAssetUrl(job['assetShortUuid'])
 
     return uploadInfo
 
