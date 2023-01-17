@@ -1,3 +1,6 @@
+## Enterprise Only:
+The Nira Upload API requires an Enterprise Nira account. The instrutions below only apply to Enterprise accounts.
+
 ## Quick Start:
 First, download a release or clone the repo and from within the directory, run `python nira.py configure` on a terminal, which will guide you through the process of providing your API key and secret.
 
