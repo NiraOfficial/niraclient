@@ -641,6 +641,8 @@ class NiraClient:
               'data': (fileName, chunk, 'application/octet-stream'),
               }
 
+          self.authorize()
+
           headers = {}
           headers.update(self.headerParams)
           response = http.post("https://" + uploadServiceHost + '/file-upload-part', files=mimeparts, headers=headers)
@@ -674,6 +676,8 @@ class NiraClient:
           p.close()
           p.join()
 
+          self.authorize()
+
           headers = {}
           headers.update(self.headerParams)
           payload={
@@ -693,6 +697,8 @@ class NiraClient:
       pp.map(uploadFile, files)
       pp.close()
       pp.join()
+
+      self.authorize()
 
       jobPatchParams = {
           'status': "uploaded",
