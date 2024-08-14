@@ -540,7 +540,7 @@ class NiraClient:
 
       uploadServiceHost = os.getenv("NIRA_UPLOAD_SERVICE_HOST") or job['uploadServiceHost']
 
-      def uploadFile(f):
+      def createFileRecord(f):
         self.authorize()
 
         f['size'] = os.path.getsize(f['path'])
@@ -586,6 +586,33 @@ class NiraClient:
         r = http.post(url = filesEndpoint, json=fileCreateParams, headers=self.headerParams)
         r.raise_for_status()
         fileRecord = r.json()
+
+        fileRecord['f'] = f
+
+        return fileRecord
+
+      # Create all file records, in parallel
+      cp = mp.Pool(FILE_MAX_THREAD_COUNT)
+      fileRecords = cp.map(createFileRecord, files)
+      cp.close()
+      cp.join()
+
+      self.authorize()
+
+      # Change status of job prior to uploading files
+      jobPatchParams = {
+          'status': "uploading",
+          'batchId': batchUuid,
+          }
+      r = http.patch(url = jobsEndpoint + "/" + str(job['id']), json=jobPatchParams, headers=self.headerParams)
+      r.raise_for_status()
+
+      def uploadFile(fileRecord):
+        self.authorize()
+
+        f = fileRecord['f']
+        fileUuid = fileRecord['uuid']
+        fileName = fileRecord['fileName']
 
         # Determine if the file is already available on the server
         fileAlreadyOnServer = fileRecord['status'] == 'ready_for_processing'
@@ -694,7 +721,7 @@ class NiraClient:
           pass
 
       pp = mp.Pool(FILE_MAX_THREAD_COUNT)
-      pp.map(uploadFile, files)
+      pp.map(uploadFile, fileRecords)
       pp.close()
       pp.join()
 
