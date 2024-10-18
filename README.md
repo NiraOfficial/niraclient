@@ -82,9 +82,13 @@ The example above creates a photogrammetry asset called 'test asset' and uploads
 
 file-list-example.json (also included this repo) defines these files and their types. To show more information on the json format, run `python nira.py asset create`.
 
-Note, the command will also wait for the asset to finish processing, then print the URL to the asset on stdout.
+The command will print the URL of the asset upon success, or an error message upon failure. The command will also exit with a success code (0) upon success and a failure code (1) upon failure.
 
 > Tip: The last 22 characters of the printed URL can be used as the identifier in a Nira embed.
+
+### How to wait for asset processing to complete
+
+By default, an 'asset create' command execution will complete immediately after the upload finishes and will not wait for processing. If you visit an asset URL while the asset is still processing, a "This asset is still processing." message will be shown, and it will not be possible to view it. To upload an asset and wait for processing to finish, you can specify the `--wait-for-asset-processing MAX_SECONDS` parameter to the asset create command. This will wait up to WAIT\_MAX\_SECONDS for the asset to be processed on the server before the command completes.
 
 ### Server-side fetch
 > Server-side fetch is an Enterprise-only feature. [Contact us](https://nira.app/contact) before using it in production
@@ -115,7 +119,7 @@ if you'd like to use this feature in production.
 python nira.py asset files add "test asset" assets/sphere.abc
 ```
 
-This uploads an additional geometry file sphere.abc to the existing asset named 'test asset', then wait for the files to finish processing on the server and print the asset's URL:
+This uploads an additional geometry file sphere.abc to the existing asset named 'test asset' and prints the asset's URL.
 
 > Tip: Instead of a list of files on the commandline, `asset files add` can be provided with an json array on its stdin, just like `asset create`.
 
@@ -138,6 +142,6 @@ python nira.py asset list --uuid 8d3b6e4a-50b1-4282-8b57-b94d7da4fd7e
 ```
 python nira.py asset create cube-animation volumetric_video assets/sequence/cube*.obj assets/sequence/cube*.png
 ```
-Upload cube0001.obj through cube0006.obj and cube0001.png through cube0006.png to a new asset named cube-animation as a playback sequence (aka Volumetric Video, 4D Video, etc), then wait for the asset to finish processing on the server and print its URL.
+Upload cube0001.obj through cube0006.obj and cube0001.png through cube0006.png to a new asset named cube-animation as a playback sequence (aka Volumetric Video, 4D Video, etc) and print its URL.
 When uploading volumetric video, the naming scheme for the geometry files and texture files should match. For example, cube0001.obj will be matched to cube0001.png. It is also acceptable to have cube0001.obj and cube0001.obj.png.
 Also note, the asterisk wildcard usage in this example is taking advantage of the shell's filename expansion. If executing this command from a context that isn't using a shell, you'll need to separately specify each file name.
