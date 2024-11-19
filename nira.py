@@ -268,7 +268,7 @@ def assetCreate(args):
 
   uploadInfo = nirac.uploadAsset(files, args.type, args.name, dccname=args.dccname, useCompression=args.use_upload_compression, maxWaitSeconds=args.wait_max_seconds)
 
-  if uploadInfo.jobStatus == NiraJobStatus.Processed:
+  if uploadInfo.jobStatus != NiraJobStatus.ProcessingError:
     print(uploadInfo.assetUrl)
     sys.exit(0)
 
