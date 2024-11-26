@@ -412,6 +412,58 @@ class NiraClient:
 
     return
 
+  def importCallouts(self, shortAssetUuid, fileName, removeCalloutsBeforeImport=False, format=None):
+    self.authorize()
+
+    if not os.path.exists(fileName):
+      raise IOError('File not found: ' + fileName)
+
+    mime_type = None
+
+    if format == None:
+      format = os.path.splitext(fileName)[1][1:]
+
+    if format in ['json', 'tsv', 'csv']:
+      if format == 'json':
+        mime_type = 'application/json'
+      elif format == 'csv':
+        mime_type = 'text/csv'
+      elif format == 'tsv':
+        mime_type = 'text/tab-separated-values'
+
+    if mime_type == None:
+      raise Exception('Input file type could not be determined: ' + fileName)
+
+    with open(fileName, 'rb') as f:
+      data = f.read()
+
+    importCalloutsEndpoint = self.url + "api/assets/{suuid}/callouts/import?removeCalloutsBeforeImport={removeCalloutsBeforeImport}".format(
+      suuid = shortAssetUuid,
+      removeCalloutsBeforeImport = 1 if removeCalloutsBeforeImport else 0
+    )
+
+    if mime_type == 'application/json':
+      json_data = json.loads(data)
+      r = http.post(importCalloutsEndpoint, json=json_data, headers=self.headerParams)
+    else:
+      headers = self.headerParams.copy()
+      headers['content-type'] = mime_type
+      r = http.post(importCalloutsEndpoint, data=data.decode('utf-8'), headers=headers)
+
+    r.raise_for_status()
+
+    return r
+
+  def exportCallouts(self, shortAssetUuid, format='json'):
+    self.authorize()
+
+    exportCalloutsEndpoint = self.url + "api/assets/{suuid}/callouts/export?format={format}".format(suuid = shortAssetUuid, format = format)
+
+    r = http.get(url = exportCalloutsEndpoint, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r
+
   def shareAsset(self, shortAssetUuid, email, role, expirationDate=None):
     self.authorize()
 

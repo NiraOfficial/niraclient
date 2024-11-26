@@ -1,0 +1,35 @@
+[
+  {
+    "title": "Wikipedia",
+    "type": "Annotation",
+    "content": [
+      {
+        "url": "https://en.wikipedia.org/wiki/Teapot",
+        "type": "media_embed",
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      {
+        "type": "p",
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      }
+    ],
+    "defectType": [],
+    "camPosX": -53.084807768000005,
+    "camPosY": -64.59068401833305,
+    "camPosZ": 55.65175570501171,
+    "camTarX": 2.5669479370117188,
+    "camTarY": 18.88694953918457,
+    "camTarZ": 3.4694763448229942e-15,
+    "posX": -7.663819308072875,
+    "posY": 3.2952792626550393,
+    "posZ": 17.92661911004774
+  }
+]

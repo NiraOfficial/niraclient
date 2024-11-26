@@ -20,6 +20,7 @@ import requests.exceptions
 import datetime
 import traceback
 import json
+import csv
 from getpass import getpass
 
 try:
@@ -176,23 +177,37 @@ assetCreateParser.add_argument('files', default=[], nargs='*', type=str, help=up
 addUploadOptionsToParser(assetCreateParser)
 
 assetDeleteParser = assetSubParser.add_parser('delete', help='Delete an existing asset')
-assetDeleteParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid for an existing asset (22 characters). If an asset with this short uuid does not exist, an error message will be printed.')
+assetDeleteParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
 
 assetSharingParser = assetSubParser.add_parser('sharing', help='Perform asset sharing related operations')
 assetSharingSubParser = assetSharingParser.add_subparsers(help='Asset sharing related operations', dest='AssetSharingOperation')
 assetSharingSubParser.required = True
 
+calloutsParser = assetSubParser.add_parser('callouts', help='Perform callouts related operations')
+calloutsSubParser = calloutsParser.add_subparsers(help='Callouts related operations', dest='CalloutOperation')
+calloutsSubParser.required = True
+calloutsExportParser = calloutsSubParser.add_parser('export', help='Export callouts')
+calloutsExportParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
+calloutsExportParser.add_argument('--output-file', type=str, dest='output_file', help='Optionally specify an output file path. By default, print to stdout.')
+calloutsExportParser.add_argument('--format', type=str, choices=['csv', 'tsv', 'json'], default='json', help='Optionally specify the format of exported callouts. By default, use json.')
+
+calloutsImportParser = calloutsSubParser.add_parser('import', help='Import callouts')
+calloutsImportParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
+calloutsImportParser.add_argument('input_file_path', type=str, help='Specify the path to the local input file')
+calloutsImportParser.add_argument('--remove-all-existing-callouts', action='store_true', dest='remove_all_existing_callouts', help='Controls whether the existing callouts are removed before importing.')
+calloutsImportParser.add_argument('--format', type=str, choices=['csv', 'tsv', 'json'], default=None, help='Optionally specify the format of the input file. By default, the file extension will be used to determine the format. If the format cannot be determined, an error will be printed.')
+
 assetUserParser = assetSharingSubParser.add_parser('user', help='Managing sharing of an asset for particular users')
 assetUserSubParser = assetUserParser.add_subparsers(help='Asset sharing related operations', dest='AssetSharingUserOperation')
 assetUserSubParser.required = True
 assetShareUserAddParser = assetUserSubParser.add_parser('add', help='Share asset with a user specified by email.')
-assetShareUserAddParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If an asset with this name does not exist, an error message will be printed.')
+assetShareUserAddParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
 assetShareUserAddParser.add_argument('user_email', type=str, help='Specify a user by email')
 assetShareUserAddParser.add_argument('role', type=str, help='Role name. Could be "viewer" or "contributor"')
 assetShareUserAddParser.add_argument('expiration_date', type=str, help='Optional expiration datetime in ISO format. e.g. 2022-02-24T23:00:00.000Z', nargs='?')
 
 assetSetPublicParser = assetSharingSubParser.add_parser('set-public', help='Set the public sharing flag on or off for an asset')
-assetSetPublicParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If an asset with this name does not exist, an error message will be printed.')
+assetSetPublicParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
 assetSetPublicParser.add_argument('public_flag', choices=["on", "off"], help='Enables or disables the public flag for the asset')
 
 assetListParser = assetSubParser.add_parser('list', help='List assets, optionally filtering by some criteria')
@@ -224,6 +239,44 @@ def preauthUser(args):
   user_info = nirac.preauthUser(args.email, args.name)
 
   print(str(json.dumps(user_info, indent=2)))
+
+  sys.exit(1)
+
+def importCallouts(args):
+  nirac = getNiraClient(args)
+
+  callouts = nirac.importCallouts(
+    args.asset_short_uuid,
+    args.input_file_path,
+    args.remove_all_existing_callouts,
+    args.format
+  )
+
+  sys.exit(1)
+
+def exportCallouts(args):
+  nirac = getNiraClient(args)
+
+  callouts = nirac.exportCallouts(args.asset_short_uuid, args.format)
+
+  def saveToFile(content, file_name):
+    with open(file_name, 'w') as file:
+      file.write(content)
+
+  if args.format == "json":
+    jsonContent = str(json.dumps(callouts.json(), indent=2))
+
+    if (args.output_file == None):
+      print(jsonContent)
+    else:
+      saveToFile(jsonContent, args.output_file)
+  else:
+    content = callouts.content.decode(encoding="utf-8")
+
+    if (args.output_file == None):
+      print(content)
+    else:
+      saveToFile(content, args.output_file)
 
   sys.exit(1)
 
@@ -372,6 +425,8 @@ def configure(args):
     else:
       print("Keeping existing default org %s" %curNiraConfig.org)
 
+calloutsExportParser.set_defaults(func=exportCallouts)
+calloutsImportParser.set_defaults(func=importCallouts)
 assetCreateParser.set_defaults(func=assetCreate)
 assetDeleteParser.set_defaults(func=assetDelete)
 assetShareUserAddParser.set_defaults(func=assetShare)

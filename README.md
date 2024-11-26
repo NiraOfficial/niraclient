@@ -123,6 +123,30 @@ This uploads an additional geometry file sphere.abc to the existing asset named 
 
 > Tip: Instead of a list of files on the commandline, `asset files add` can be provided with an json array on its stdin, just like `asset create`.
 
+### Export callouts from an asset
+```
+python nira.py asset callouts export --output-file callouts-export.json <Asset URL>
+```
+This exports the callouts from the specified asset to a callouts-export.json file. You can omit `--output-file callouts-export.json` to print to stdout. To learn more about this command's options, run `python nira.py asset callouts export` to print the help.
+
+(Note: Replace `<Asset URL>` with the URL of an asset.)
+
+### Import callouts to an asset
+```
+python nira.py asset callouts import <Asset URL> example_callout_annotation.json
+```
+This imports the callouts from the example\_callout\_annotation.json to the specified asset.
+
+To learn more about this command's options, run `python nira.py asset callouts import` to print the help. The `--remove-all-existing-callouts` option is particularly useful, because it allows you to remove all of the existing callouts on the asset before importing the new callouts.
+
+Please note, the callout defined by example\_callout\_annotation.json is meant to be imported to an asset using the included assets/tpot.obj file. Here's an example of using two commands to create the approrpiate asset then import the callouts to it:
+```
+python nira.py asset create --wait-for-asset-processing 60 callout-import-test-asset photogrammetry assets/tpot.obj assets/tpot.mtl
+
+python nira.py asset callouts import <Asset URL> example_callout_annotation.json
+```
+Note: Replace `<Asset URL>` with the URL printed by the previous `asset create` command.
+
 ### List all assets in JSON format:
 ```
 python nira.py asset list
