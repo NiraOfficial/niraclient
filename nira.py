@@ -24,6 +24,11 @@ import csv
 from getpass import getpass
 
 try:
+  from urllib.parse import urlparse
+except ImportError:
+  from urlparse import urlparse
+
+try:
   input = raw_input
 except NameError:
   pass
@@ -242,11 +247,29 @@ def preauthUser(args):
 
   sys.exit(1)
 
+def getShortUuidFromPossibleUrl(shortUuidOrUrl):
+  if len(shortUuidOrUrl) == 22:
+    return shortUuidOrUrl
+
+  urlParams = urlparse(shortUuidOrUrl)
+  pathparts = urlParams.path.split("/", 3)
+
+  if pathparts[1] != 'a':
+    print("%s is not a valid asset URL or short uuid!" %shortUuidOrUrl, file=sys.stderr)
+    sys.exit(1)
+
+  for pathpart in pathparts:
+    if len(pathpart) == 22:
+      return pathpart
+
+  print("%s is not a valid asset URL or short uuid!" %shortUuidOrUrl, file=sys.stderr)
+  sys.exit(1)
+
 def importCallouts(args):
   nirac = getNiraClient(args)
 
   callouts = nirac.importCallouts(
-    args.asset_short_uuid,
+    getShortUuidFromPossibleUrl(args.asset_short_uuid),
     args.input_file_path,
     args.remove_all_existing_callouts,
     args.format
@@ -257,7 +280,7 @@ def importCallouts(args):
 def exportCallouts(args):
   nirac = getNiraClient(args)
 
-  callouts = nirac.exportCallouts(args.asset_short_uuid, args.format)
+  callouts = nirac.exportCallouts(getShortUuidFromPossibleUrl(args.asset_short_uuid), args.format)
 
   def saveToFile(content, file_name):
     with open(file_name, 'w') as file:
@@ -283,7 +306,7 @@ def exportCallouts(args):
 def assetShare(args):
   nirac = getNiraClient(args)
 
-  asset_invitation = nirac.shareAsset(args.asset_short_uuid, args.user_email, args.role, args.expiration_date)
+  asset_invitation = nirac.shareAsset(getShortUuidFromPossibleUrl(args.asset_short_uuid), args.user_email, args.role, args.expiration_date)
 
   print(str(json.dumps(asset_invitation, indent=2)))
 
@@ -292,7 +315,7 @@ def assetShare(args):
 def assetDelete(args):
   nirac = getNiraClient(args)
 
-  nirac.deleteAsset(args.asset_short_uuid)
+  nirac.deleteAsset(getShortUuidFromPossibleUrl(args.asset_short_uuid))
 
   sys.exit(1)
 
@@ -379,7 +402,7 @@ def assetList(args):
 def assetSetPublic(args):
   nirac = getNiraClient(args)
 
-  asset = nirac.setPublic(args.asset_short_uuid, args.public_flag == "on");
+  asset = nirac.setPublic(getShortUuidFromPossibleUrl(args.asset_short_uuid), args.public_flag == "on");
   print(str(json.dumps(asset, indent=2)))
 
 def configure(args):
