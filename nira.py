@@ -151,7 +151,8 @@ parser.add_argument('--print-requests', dest='print_requests', action='store_tru
 parser.add_argument('--print-responses', dest='print_responses', action='store_true', default=False, help="Print HTTP requests stderr. Useful for leaning about the API, or for debugging purposes")
 parser.add_argument('--print-and-dump-requests', dest='print_and_dump_requests', action='store_true', default=False, help="Print HTTP requests stderr and also dump the requests to 'request-body-NNN' files in your current directory. Useful for inspecting large request bodies such as file part upload requests")
 parser.add_argument('--org', type=str, dest='org', default=None, help="Your Nira organization name, including the domain name. This is only for advanced usage where multiple orgs are being used.")
-parser.add_argument('--request-api-token-expiration-time', type=int, dest='request_api_token_expiration_time', default=None, help="Specify the API token expiration time, in seconds. The default is 14400 (4 hours). Specifying 0 requests a very long expiration time (20 years), which is useful for advanced use-cases.")
+parser.add_argument('--use-client-side-auth-token-exchange', dest='use_client_side_auth_token_exchange', action='store_true', default=False, help="Perform auth token exchange on the client side. Advanced use cases only.")
+parser.add_argument('--request-api-token-expiration-time', type=int, dest='request_api_token_expiration_time', default=None, help="When using client side auth token exchange, this specifies the token's expiration time in seconds. The default is 1200 (20 minutes), and the maximum is 14400 (4 hours). Advanced use cases only.")
 
 subparsers = parser.add_subparsers(help='Operation', dest='Operation')
 subparsers.required = True
@@ -231,7 +232,7 @@ addUploadOptionsToParser(assetAddfilesParser)
 
 def getNiraClient(args):
   try:
-    niraClient = NiraClient(org=args.org, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
+    niraClient = NiraClient(org=args.org, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, useClientSideAuthTokenExchange=args.use_client_side_auth_token_exchange, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
     return niraClient
   except Exception as e:
     print("ERROR: " + str(e))
@@ -415,22 +416,26 @@ def configure(args):
     print("\nIf you have a custom URL, you should still use the original .nira.app org name assigned to you when interacting with the API")
     sys.exit(1)
 
-  print("Enter your Nira API key ID, generated from within your Nira admin dashboard's API Keys section, e.g. https://your-org.nira.app/admin/apikeys")
-  newNiraConfig.apiKeyId = input("Nira API key ID (36 characters): ")
+  print("Enter your Nira API key, generated from within your Nira admin dashboard's API Keys section, e.g. https://your-org.nira.app/admin/apikeys")
+  print("NOTE: Your API key will not print to the screen as you enter it!")
+
+  apikey = getpass("Nira API key (77 characters, will not echo!): ")
+
+  if len(apikey) != 77:
+    print("ERROR: The API key must be 77 characters!")
+    sys.exit(1)
+
+  newNiraConfig.apiKeyId, newNiraConfig.apiKeySecret = apikey.split(":")
 
   if len(newNiraConfig.apiKeyId) != 36:
-    print("ERROR: The API key ID must be 36 characters!")
+    print("ERROR: Invalid API Key! The id portion must be 36 characters.")
     sys.exit(1)
-
-  print("Enter your Nira API key secret, also generated from within your Nira admin dashboard's API Keys section")
-  print("NOTE: Your API key secret will not print to the screen as you enter it!")
-  newNiraConfig.apiKeySecret = getpass("Nira API key secret (40 characters, will not echo!): ")
 
   if len(newNiraConfig.apiKeySecret) != 40:
-    print("ERROR: The API key secret must be 40 characters (You entered %)!" % len(newNiraConfig.apiKeySecret))
+    print("ERROR: Invalid API Key! The secret portion must be 40 characters.")
     sys.exit(1)
 
-  nirac = NiraClient(niraConfig=newNiraConfig, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
+  nirac = NiraClient(niraConfig=newNiraConfig, printRequests=args.print_requests, printResponses=args.print_responses, printAndDumpRequests=args.print_and_dump_requests, useClientSideAuthTokenExchange=args.use_client_side_auth_token_exchange, requestApiTokenExpirationTime=args.request_api_token_expiration_time)
   nirac.authorize() # This will raise if the authorization fails
   newNiraConfig.write()
 

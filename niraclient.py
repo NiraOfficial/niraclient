@@ -124,6 +124,7 @@ class NiraConfig:
   """
   def __init__(self):
     self.org = ''
+    self.apiKey = ''
     self.apiKeyId = ''
     self.apiKeySecret = ''
     self.apiToken = ''
@@ -207,7 +208,7 @@ class NiraClient:
   whether an asset has finished being processed by Nira, and a few other things.
   """
 
-  def __init__(self, niraConfig=None, org=None, configFilePath=NIRA_CLIENT_CONFIG_PATH, printRequests=False, printResponses=False, printAndDumpRequests=False, requestApiTokenExpirationTime=None):
+  def __init__(self, niraConfig=None, org=None, configFilePath=NIRA_CLIENT_CONFIG_PATH, printRequests=False, printResponses=False, printAndDumpRequests=False, useClientSideAuthTokenExchange=False, requestApiTokenExpirationTime=None):
     """
     Constructor.
 
@@ -229,6 +230,7 @@ class NiraClient:
     self.configFilePath = configFilePath
     self.headerParams = {}
     self.config = niraConfig
+    self.useClientSideAuthTokenExchange = useClientSideAuthTokenExchange
     self.requestApiTokenExpirationTime = requestApiTokenExpirationTime
 
     self.headerParams['User-Agent'] = 'niraclient.py'
@@ -263,39 +265,43 @@ class NiraClient:
     """
     self.config.checkValidity()
 
-    gotUpdatedToken = False
+    if self.useClientSideAuthTokenExchange:
+      gotUpdatedToken = False
 
-    if not self.config.apiToken or not self.isValidExpireTime(self.config.apiTokenExpires):
-      authEndpoint = self.config.niraAuthUrl + "/api-key-auth"
+      if not self.config.apiToken or not self.isValidExpireTime(self.config.apiTokenExpires):
+        authEndpoint = self.config.niraAuthUrl + "/api-key-auth"
 
-      if self.requestApiTokenExpirationTime is not None:
-        authEndpoint += "?expires=" + str(self.requestApiTokenExpirationTime)
+        if self.requestApiTokenExpirationTime is not None:
+          authEndpoint += "?expires=" + str(self.requestApiTokenExpirationTime)
 
-      headers = {}
-      headers['x-nira-org'] = self.config.org
-      headers['x-api-key-id'] = self.config.apiKeyId
-      headers['x-api-key-secret'] = self.config.apiKeySecret
+        headers = {}
+        headers['x-nira-org'] = self.config.org
+        headers['x-api-key-id'] = self.config.apiKeyId
+        headers['x-api-key-secret'] = self.config.apiKeySecret
 
-      r = http.post(url = authEndpoint, headers=headers)
-      r.raise_for_status()
+        r = http.post(url = authEndpoint, headers=headers)
+        r.raise_for_status()
 
-      json = r.json();
+        json = r.json();
 
-      self.config.apiToken = json['token']
-      self.config.apiTokenExpires = json['expires']
+        self.config.apiToken = json['token']
+        self.config.apiTokenExpires = json['expires']
 
-      gotUpdatedToken = True
+        gotUpdatedToken = True
 
-    if not self.config.apiToken:
-      raise Exception("API token must be defined!")
+      if not self.config.apiToken:
+        raise Exception("API token must be defined!")
 
-    self.headerParams['x-api-token'] = self.config.apiToken
+      self.headerParams['x-api-token'] = self.config.apiToken
+
+      if self.configFilePath and gotUpdatedToken:
+        self.config.write(self.configFilePath)
+    else:
+      self.headerParams['x-api-key'] = self.config.apiKeyId + ":" + self.config.apiKeySecret
+
     self.headerParams['x-nira-org'] = self.config.org
 
     self.url = "https://" + self.config.org + "/"
-
-    if self.configFilePath and gotUpdatedToken:
-      self.config.write(self.configFilePath)
 
   def isValidExpireTime(self, exp):
     if not exp:
