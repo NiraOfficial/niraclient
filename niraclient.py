@@ -307,8 +307,9 @@ class NiraClient:
     if not exp:
       return False
 
-    expiration_date = datetime.fromtimestamp(exp)
-    date_now = datetime.now()
+    expiration_date = datetime.utcfromtimestamp(exp)
+    date_now = datetime.utcnow()
+
     time_delta = timedelta(minutes=30)
 
     return date_now + time_delta < expiration_date
