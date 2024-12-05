@@ -299,8 +299,6 @@ class NiraClient:
     else:
       self.headerParams['x-api-key'] = self.config.apiKeyId + ":" + self.config.apiKeySecret
 
-    self.headerParams['x-nira-org'] = self.config.org
-
     self.url = "https://" + self.config.org + "/"
 
   def isValidExpireTime(self, exp):
