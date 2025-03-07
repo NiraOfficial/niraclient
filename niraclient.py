@@ -48,7 +48,7 @@ from requests.adapters import HTTPAdapter
 
 http = requests.Session()
 from requests.packages.urllib3.util.retry import Retry
-retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 400, 401, 413, 429, 500, 501, 502, 503, 504 ])
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 401, 413, 429, 500, 501, 502, 503, 504 ])
 
 http.mount('http://', HTTPAdapter(max_retries=retries))
 http.mount('https://', HTTPAdapter(max_retries=retries))
