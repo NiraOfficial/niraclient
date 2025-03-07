@@ -417,6 +417,21 @@ class NiraClient:
 
     return
 
+  def deleteAssetsBefore(self, before, confirm):
+    self.authorize()
+
+    confirmval = 'false'
+
+    if True == confirm:
+      confirmval = 'true'
+
+    deleteAssetEndpoint = self.url + "api/assets?before={before}&confirm={confirm}".format(before = before, confirm = confirmval)
+
+    r = http.delete(url = deleteAssetEndpoint, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
   def importCallouts(self, shortAssetUuid, fileName, removeCalloutsBeforeImport=False, format=None):
     self.authorize()
 

@@ -185,6 +185,10 @@ addUploadOptionsToParser(assetCreateParser)
 assetDeleteParser = assetSubParser.add_parser('delete', help='Delete an existing asset')
 assetDeleteParser.add_argument('asset_short_uuid',  metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
 
+assetDeleteBeforeParser = assetSubParser.add_parser('delete-before', help='Delete all assets that were created prior to the specified point in time and print information about the impacted assets to stdout in JSON format.')
+assetDeleteBeforeParser.add_argument('before', type=str, metavar='before', help='A timestamp (milliseconds since epoch) or a relative date string in the format "Nd", where N is a positive integer and "d" represents days. For example, "30d" would delete assets created before 30 days ago, and the timestamp 1741201439963 would delete all assets created before 2025-03-05 19:03:59 UTC.')
+assetDeleteBeforeParser.add_argument('--confirm', dest='confirm', action='store_true', default=False, help="Assets will only be deleted if this is specified. If not specified, information about the assets that would have been deleted are printed to stdout, but they are not actually deleted.")
+
 assetSharingParser = assetSubParser.add_parser('sharing', help='Perform asset sharing related operations')
 assetSharingSubParser = assetSharingParser.add_subparsers(help='Asset sharing related operations', dest='AssetSharingOperation')
 assetSharingSubParser.required = True
@@ -317,6 +321,18 @@ def assetDelete(args):
   nirac = getNiraClient(args)
 
   nirac.deleteAsset(getShortUuidFromPossibleUrl(args.asset_short_uuid))
+
+  sys.exit(1)
+
+def assetDeleteBefore(args):
+  nirac = getNiraClient(args)
+
+  deletedAssets = nirac.deleteAssetsBefore(args.before, args.confirm)
+
+  print(str(json.dumps(deletedAssets['result']['assets'], indent=2)))
+
+  if (args.confirm != True):
+    print("This is a dry run. Specify --confirm to actually delete the assets shown.", file=sys.stderr)
 
   sys.exit(1)
 
@@ -457,6 +473,7 @@ calloutsExportParser.set_defaults(func=exportCallouts)
 calloutsImportParser.set_defaults(func=importCallouts)
 assetCreateParser.set_defaults(func=assetCreate)
 assetDeleteParser.set_defaults(func=assetDelete)
+assetDeleteBeforeParser.set_defaults(func=assetDeleteBefore)
 assetShareUserAddParser.set_defaults(func=assetShare)
 assetSetPublicParser.set_defaults(func=assetSetPublic)
 assetAddfilesParser.set_defaults(func=assetFilesAdd)
