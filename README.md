@@ -22,7 +22,7 @@ This will print all of the asset operations that can be performed. To display he
 python nira.py asset create
 ```
 
-To print the help for all subcommands, run `python nira.py --full-help` or click [here](FULL_HELP.md). Also see the [additional examples](#more-cli-usage-examples-with-details) below.
+To print the help for all subcommands, run `python nira.py --full-help` or click [here](./FULL_HELP.md). Also see the [additional examples](#more-cli-usage-examples-with-details) below.
 
 ### Understanding REST calls by printing HTTPS requests and responses:
 The `--print-requests` and/or `--print-responses` options to the `python nira.py` command will cause all HTTP requests and reponses to be printed to stderr. For example, this will print the HTTP request/response for publicly sharing an asset with id `M2Kdl5k66kdDBmrGgQ5DsA`:
