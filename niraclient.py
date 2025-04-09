@@ -407,6 +407,60 @@ class NiraClient:
 
     return r.json()
 
+  def listGroups(self, query):
+    self.authorize()
+
+    groupEndpoint = self.url + "api/groups"
+
+    r = http.get(url = groupEndpoint, params=query, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def getGroup(self, groupUuid):
+    self.authorize()
+
+    if not groupUuid:
+      raise IOError('group uuid is required!')
+
+    groupEndpoint = self.url + "api/groups/" + groupUuid
+
+    query = {}
+
+    r = http.get(url = groupEndpoint, params=query, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def deleteGroup(self, groupUuid):
+    self.authorize()
+
+    if not groupUuid:
+      raise IOError('group uuid is required!')
+
+    groupEndpoint = self.url + "api/groups/" + groupUuid
+
+    query = {}
+
+    r = http.delete(url = groupEndpoint, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
+  def createGroup(self, groupName):
+    self.authorize()
+
+    groupEndpoint = self.url + "api/groups"
+
+    groupCreateData = {
+      'name': groupName,
+    }
+
+    r = http.post(url = groupEndpoint, json=groupCreateData, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
   def deleteAsset(self, shortAssetUuid):
     self.authorize()
 

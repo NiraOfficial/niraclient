@@ -163,6 +163,23 @@ assetParser = subparsers.add_parser('asset', help='Perform asset related operati
 assetSubParser = assetParser.add_subparsers(help='Asset related operations', dest='AssetOperation')
 assetSubParser.required = True
 
+groupParser = subparsers.add_parser('group', help='Perform group related operations')
+groupSubParser = groupParser.add_subparsers(help='Group related operations', dest='GroupOperation')
+groupSubParser.required = True
+
+groupListParser = groupSubParser.add_parser('list', help='List groups')
+groupListFilteringGroup = groupListParser.add_argument_group(title='Filtering options')
+groupListFilteringGroup.add_argument('--name', type=str, help='Filter by group name')
+
+groupGetParser = groupSubParser.add_parser('get', help='Get group')
+groupGetParser.add_argument('group_uuid', type=str, help='Specify the uuid of the group to retrieve')
+
+groupDeleteParser = groupSubParser.add_parser('delete', help='Delete group.')
+groupDeleteParser.add_argument('group_uuid', type=str, help='Specify the uuid of the group to delete')
+
+groupCreateParser = groupSubParser.add_parser('create', help='Create a new group.')
+groupCreateParser.add_argument('name', type=str, metavar='group_name', help='A name for the group. If an group with this name already exists, an error message will be printed.')
+
 userParser = subparsers.add_parser('user', help='Perform user related operations')
 userSubParser = userParser.add_subparsers(help='User related operations', dest='UserOperation')
 userSubParser.required = True
@@ -416,6 +433,35 @@ def assetList(args):
   assets = nirac.listAssets(query);
   print(str(json.dumps(assets, indent=2)))
 
+def groupList(args):
+  nirac = getNiraClient(args)
+
+  query = {}
+
+  if args.name:
+    query['name'] = args.name
+
+  groups = nirac.listGroups(query);
+  print(str(json.dumps(groups, indent=2)))
+
+def groupGet(args):
+  nirac = getNiraClient(args)
+
+  group = nirac.getGroup(args.group_uuid);
+  print(str(json.dumps(group, indent=2)))
+
+def groupDelete(args):
+  nirac = getNiraClient(args)
+
+  group = nirac.deleteGroup(args.group_uuid);
+  print(str(json.dumps(group, indent=2)))
+
+def groupCreate(args):
+  nirac = getNiraClient(args)
+
+  group = nirac.createGroup(args.name);
+  print(str(json.dumps(group, indent=2)))
+
 def assetSetPublic(args):
   nirac = getNiraClient(args)
 
@@ -478,6 +524,10 @@ assetShareUserAddParser.set_defaults(func=assetShare)
 assetSetPublicParser.set_defaults(func=assetSetPublic)
 assetAddfilesParser.set_defaults(func=assetFilesAdd)
 assetListParser.set_defaults(func=assetList)
+groupListParser.set_defaults(func=groupList)
+groupGetParser.set_defaults(func=groupGet)
+groupDeleteParser.set_defaults(func=groupDelete)
+groupCreateParser.set_defaults(func=groupCreate)
 userPreauthParser.set_defaults(func=preauthUser)
 configureParser.set_defaults(func=configure)
 
