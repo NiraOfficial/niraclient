@@ -184,10 +184,6 @@ userParser = subparsers.add_parser('user', help='Perform user related operations
 userSubParser = userParser.add_subparsers(help='User related operations', dest='UserOperation')
 userSubParser.required = True
 
-userPreauthParser = userSubParser.add_parser('preauth', help='''Generates and prints a preauthentication uid and token for a user. This invalidates any prior preauthentication token for the user. It also creates the user, if they don't already exist''')
-userPreauthParser.add_argument('--name', type=str, default=None, help='''Name for user. This is optional, and by default will use the text prior to the '@' in the email address. The specified name is only used if the user doesn't already exist; Including parameter will not update existing user records.''')
-userPreauthParser.add_argument('email', type=str, help='User email')
-
 def addUploadOptionsToParser(thisParser):
   thisParser.add_argument('--no-upload-compression', action='store_false', dest='use_upload_compression', help="Disables the use of automatic upload compression. Upload compression is enabled by default. You may wish to disable it if you have a particularly capable upstream network throughput (1gbps+) or have concerns about CPU utilization on the machine doing the uploading.")
   thisParser.add_argument('--wait-for-asset-processing', dest='wait_max_seconds', default=0, type=int, help='Wait up to WAIT_MAX_SECONDS for the asset to be processed on the server before returning. By default, the command will return immediately after upload and will not wait for processing.')
@@ -259,15 +255,6 @@ def getNiraClient(args):
     print("ERROR: " + str(e))
     print("\nMake sure you run '%s configure'!"% sys.argv[0])
     sys.exit(1)
-
-def preauthUser(args):
-  nirac = getNiraClient(args)
-
-  user_info = nirac.preauthUser(args.email, args.name)
-
-  print(str(json.dumps(user_info, indent=2)))
-
-  sys.exit(1)
 
 def getShortUuidFromPossibleUrl(shortUuidOrUrl):
   if len(shortUuidOrUrl) == 22:
@@ -528,7 +515,6 @@ groupListParser.set_defaults(func=groupList)
 groupGetParser.set_defaults(func=groupGet)
 groupDeleteParser.set_defaults(func=groupDelete)
 groupCreateParser.set_defaults(func=groupCreate)
-userPreauthParser.set_defaults(func=preauthUser)
 configureParser.set_defaults(func=configure)
 
 args = parser.parse_args()

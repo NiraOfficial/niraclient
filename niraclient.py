@@ -556,25 +556,6 @@ class NiraClient:
 
     return r.json()
 
-  def preauthUser(self, email, name=None):
-    self.authorize()
-
-    preauthUserEndpoint = self.url + "api/users/preauth"
-
-    requestBody = {
-      'email': email
-    }
-
-    if name:
-      requestBody.update({
-        'name': name
-      })
-
-    r = http.post(url = preauthUserEndpoint, json=requestBody, headers=self.headerParams)
-    r.raise_for_status()
-
-    return r.json()
-
   def setPublic(self, shortAssetUuid, isPublic):
     self.authorize()
 
