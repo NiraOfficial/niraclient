@@ -1,3 +1,6 @@
+## Latest relase:
+You can download the latest release of niralcient from its [Github releases page](https://github.com/NiraOfficial/niraclient/releases).
+
 ## Enterprise Only:
 The Nira Upload API requires an Enterprise Nira account. The instrutions below only apply to Enterprise accounts.
 
