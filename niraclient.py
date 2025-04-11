@@ -432,6 +432,21 @@ class NiraClient:
 
     return r.json()
 
+  def expireUserSessions(self, userEmail):
+    self.authorize()
+
+    if not userEmail:
+      raise IOError('user email is required!')
+
+    userSessionsDeleteEndpoint = self.url + "api/users/sessions/?email=" + userEmail
+
+    query = {}
+
+    r = http.delete(url = userSessionsDeleteEndpoint, headers=self.headerParams)
+    r.raise_for_status()
+
+    return r.json()
+
   def deleteGroup(self, groupUuid):
     self.authorize()
 

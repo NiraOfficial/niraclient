@@ -181,8 +181,15 @@ groupCreateParser = groupSubParser.add_parser('create', help='Create a new group
 groupCreateParser.add_argument('name', type=str, metavar='group_name', help='A name for the group. If an group with this name already exists, an error message will be printed.')
 
 userParser = subparsers.add_parser('user', help='Perform user related operations')
-userSubParser = userParser.add_subparsers(help='User related operations', dest='UserOperation')
+userSubParser = userParser.add_subparsers(help='User session related operations', dest='UserOperation')
 userSubParser.required = True
+
+userSessionsParser = userSubParser.add_parser('sessions', help='Perform user session related operations')
+userSessionsSubParser = userSessionsParser.add_subparsers(help='User session related operations', dest='UserSessionOperation')
+userSessionsSubParser.required = True
+
+userSessionsDeleteParser = userSessionsSubParser.add_parser('expire', help='Expire all sessions of the user account with the specified email.')
+userSessionsDeleteParser.add_argument('user_email', type=str, help='Specify a user account\'s email address')
 
 def addUploadOptionsToParser(thisParser):
   thisParser.add_argument('--no-upload-compression', action='store_false', dest='use_upload_compression', help="Disables the use of automatic upload compression. Upload compression is enabled by default. You may wish to disable it if you have a particularly capable upstream network throughput (1gbps+) or have concerns about CPU utilization on the machine doing the uploading.")
@@ -420,6 +427,12 @@ def assetList(args):
   assets = nirac.listAssets(query);
   print(str(json.dumps(assets, indent=2)))
 
+def sessionsExpire(args):
+  nirac = getNiraClient(args)
+
+  group = nirac.expireUserSessions(args.user_email);
+  print(str(json.dumps(group, indent=2)))
+
 def groupList(args):
   nirac = getNiraClient(args)
 
@@ -516,6 +529,7 @@ groupGetParser.set_defaults(func=groupGet)
 groupDeleteParser.set_defaults(func=groupDelete)
 groupCreateParser.set_defaults(func=groupCreate)
 configureParser.set_defaults(func=configure)
+userSessionsDeleteParser.set_defaults(func=sessionsExpire)
 
 args = parser.parse_args()
 
