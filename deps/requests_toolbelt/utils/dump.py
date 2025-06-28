@@ -4,7 +4,7 @@ import collections
 from requests import compat
 
 
-__all__ = ('dump_response', 'dump_request', 'dump_all')
+__all__ = ('dump_response', 'dump_all')
 
 HTTP_VERSIONS = {
     9: b'0.9',
@@ -53,10 +53,8 @@ def _build_request_path(url, proxy_info):
 
     return request_path, uri
 
-global requestDumpNumber
-requestDumpNumber = 0
 
-def _dump_request_data(request, prefixes, bytearr, proxy_info=None, request_dump_file_prefix=None):
+def _dump_request_data(request, prefixes, bytearr, proxy_info=None):
     if proxy_info is None:
         proxy_info = {}
 
@@ -65,47 +63,25 @@ def _dump_request_data(request, prefixes, bytearr, proxy_info=None, request_dump
     request_path, uri = _build_request_path(request.url, proxy_info)
 
     # <prefix><METHOD> <request-path> HTTP/1.1
-    bytearr.extend(b'REQUEST:\r\n' + prefix + method + b' ' + request_path + b'\r\n')
+    bytearr.extend(prefix + method + b' ' + request_path + b' HTTP/1.1\r\n')
 
     # <prefix>Host: <request-host> OR host header specified by user
     headers = request.headers.copy()
     host_header = _coerce_to_bytes(headers.pop('Host', uri.netloc))
-    bytearr.extend(b'REQUEST HEADERS:\r\n' + prefix + b'Host: ' + host_header + b'\r\n')
+    bytearr.extend(prefix + b'Host: ' + host_header + b'\r\n')
 
     for name, value in headers.items():
         bytearr.extend(prefix + _format_header(name, value))
 
-    bytearr.extend(b'REQUEST BODY:\r\n')
-
+    bytearr.extend(prefix + b'\r\n')
     if request.body:
-        if len(request.body) > (4 * 1024):
-            bytearr.extend(prefix + b'<< Greater than 4K, not printing >>')
-        elif isinstance(request.body, compat.basestring):
-            newbytes = _coerce_to_bytes(request.body)
-            try:
-                # Ensure the bytes decode to utf-8
-                newbytes.decode("utf-8")
-                bytearr.extend(prefix + newbytes)
-            except Exception as e:
-                bytearr.extend(prefix + b'<< Contains unprintable characters, not printing >>')
+        if isinstance(request.body, compat.basestring):
+            bytearr.extend(prefix + _coerce_to_bytes(request.body))
         else:
             # In the event that the body is a file-like object, let's not try
             # to read everything into memory.
-            bytearr.extend(prefix + b'<< Not a string-like type, not printing >>')
-
-        if request_dump_file_prefix:
-            global requestDumpNumber
-            request_dump_filename = "%s-%03d" % (request_dump_file_prefix, requestDumpNumber)
-            requestDumpNumber+=1
-
-            with open(request_dump_filename, 'w') as f:
-                f.write(_coerce_to_bytes(request.body))
-
-            bytearr.extend(b'\r\n\r\n' + b'(Request body written to file: ' + request_dump_filename + b')')
-
-    else:
-        bytearr.extend(prefix + b'<< None >>')
-
+            bytearr.extend(b'<< Request body is not a string-like type >>')
+        bytearr.extend(b'\r\n')
     bytearr.extend(b'\r\n')
 
 
@@ -118,19 +94,18 @@ def _dump_response_data(response, prefixes, bytearr):
     version_str = HTTP_VERSIONS.get(raw.version, b'?')
 
     # <prefix>HTTP/<version_str> <status_code> <reason>
-    bytearr.extend(b'RESPONSE:\r\n')
     bytearr.extend(prefix + b'HTTP/' + version_str + b' ' +
                    str(raw.status).encode('ascii') + b' ' +
                    _coerce_to_bytes(response.reason) + b'\r\n')
 
-    #headers = raw.headers
-    #for name in headers.keys():
-    #    for value in headers.getlist(name):
-    #        bytearr.extend(prefix + _format_header(name, value))
+    headers = raw.headers
+    for name in headers.keys():
+        for value in headers.getlist(name):
+            bytearr.extend(prefix + _format_header(name, value))
 
-    bytearr.extend(b'RESPONSE BODY:\r\n')
-    bytearr.extend(prefix + response.content)
     bytearr.extend(prefix + b'\r\n')
+
+    bytearr.extend(response.content)
 
 
 def _coerce_to_bytes(data):
@@ -177,52 +152,10 @@ def dump_response(response, request_prefix=b'< ', response_prefix=b'> ',
     if not hasattr(response, 'request'):
         raise ValueError('Response has no associated request')
 
-    #proxy_info = _get_proxy_information(response)
-    #_dump_request_data(response.request, prefixes, data,
-    #                   proxy_info=proxy_info)
-    _dump_response_data(response, prefixes, data)
-    return data
-
-def dump_request(response, request_prefix=b'< ', response_prefix=b'> ',
-                  data_array=None, request_dump_file_prefix=None):
-    """Dump a single request-response cycle's information.
-
-    This will take a response object and dump only the data that requests can
-    see for that single request-response cycle.
-
-    Example::
-
-        import requests
-        from requests_toolbelt.utils import dump
-
-        resp = requests.get('https://api.github.com/users/sigmavirus24')
-        data = dump.dump_response(resp)
-        print(data.decode('utf-8'))
-
-    :param response:
-        The response to format
-    :type response: :class:`requests.Response`
-    :param request_prefix: (*optional*)
-        Bytes to prefix each line of the request data
-    :type request_prefix: :class:`bytes`
-    :param response_prefix: (*optional*)
-        Bytes to prefix each line of the response data
-    :type response_prefix: :class:`bytes`
-    :param data_array: (*optional*)
-        Bytearray to which we append the request-response cycle data
-    :type data_array: :class:`bytearray`
-    :returns: Formatted bytes of request and response information.
-    :rtype: :class:`bytearray`
-    """
-    data = data_array if data_array is not None else bytearray()
-    prefixes = PrefixSettings(request_prefix, response_prefix)
-
-    if not hasattr(response, 'request'):
-        raise ValueError('Response has no associated request')
-
     proxy_info = _get_proxy_information(response)
     _dump_request_data(response.request, prefixes, data,
-                       proxy_info=proxy_info, request_dump_file_prefix=request_dump_file_prefix)
+                       proxy_info=proxy_info)
+    _dump_response_data(response, prefixes, data)
     return data
 
 
