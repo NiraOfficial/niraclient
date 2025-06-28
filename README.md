@@ -55,7 +55,7 @@ Currently, capabilities include:
 * More coming soon
 
 #### Dependencies
-Only python3 is supported. All necessary dependencies are already included in this repo under the `deps` directory; You should not need to run `pip`, so please let us know if you do. :)
+Both python2/python3 are supported. All necessary dependencies are already included in this repo under the `deps` or `deps-py2` directories; You should not need to run `pip`, so please let us know if you do. :)
 
 ## More CLI Usage Examples with details
 

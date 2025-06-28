@@ -3,10 +3,15 @@
 from __future__ import print_function
 import uuid
 import os
-myDir = os.path.dirname(os.path.realpath(__file__))
-myDir += "/deps"
-
 import sys
+
+# Retrieve deps from this repo rather than requiring globally installed versions.
+# This ensures we're fully self-contained.
+myDir = os.path.dirname(os.path.realpath(__file__))
+if sys.version_info.major == 2:
+  myDir += "/deps-py2"
+else:
+  myDir += "/deps"
 sys.path.insert(0, myDir)
 
 from requests_toolbelt.utils import dump

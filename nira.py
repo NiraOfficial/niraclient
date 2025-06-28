@@ -4,13 +4,16 @@
 
 from __future__ import print_function
 
+import os
+import sys
+
 # Retrieve deps from this repo rather than requiring globally installed versions.
 # This ensures we're fully self-contained.
-import os
 myDir = os.path.dirname(os.path.realpath(__file__))
-myDir += "/deps"
-
-import sys
+if sys.version_info.major == 2:
+  myDir += "/deps-py2"
+else:
+  myDir += "/deps"
 sys.path.insert(0, myDir)
 
 import time
