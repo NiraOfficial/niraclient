@@ -384,6 +384,7 @@ class NiraClient:
       if updatedJob['status'] == 'complete':
         assetEndpoint = self.url + "api/assets/" + str(updatedJob['assetId'])
         r = http.get(url = assetEndpoint, headers=self.headerParams)
+        r.raise_for_status()
         asset = r.json()
 
         uploadInfo.assetUrl = self.formatAssetUrl(asset['suuid'])
@@ -800,6 +801,7 @@ class NiraClient:
           headers = {}
           headers.update(self.headerParams)
           response = http.post("https://" + uploadServiceHost + '/file-upload-part', files=mimeparts, headers=headers)
+          response.raise_for_status()
 
           #print(response.headers)
           if shouldUseCompression and not disableCompression:
