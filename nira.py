@@ -222,7 +222,9 @@ calloutsSubParser.required = True
 calloutsExportParser = calloutsSubParser.add_parser('export', help='Export callouts')
 calloutsExportParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
 calloutsExportParser.add_argument('--output-file', type=str, dest='output_file', help='Optionally specify an output file path. By default, print to stdout.')
-calloutsExportParser.add_argument('--format', type=str, choices=['csv', 'tsv', 'json'], default='json', help='Optionally specify the format of exported callouts. By default, use json.')
+calloutsExportParser.add_argument('--format', type=str, choices=['csv', 'tsv', 'json'], default='json', help='Optionally specify the format of exported callouts. Default: %(default)s')
+calloutsExportParser.add_argument('--coordsys', type=str, choices=['local', 'asset', 'latlong'], default="latlong", help='Optionally specify the coordinate system for the exported callouts. Default: %(default)s')
+calloutsExportParser.add_argument('--include', type=str, dest='include', default="pointCallouts,polylineCallouts,photoCallouts,pdfReportScreenshotIds", help='Optionally specify a comma-separated list of data types to include in the response. Default: "%(default)s"')
 
 calloutsImportParser = calloutsSubParser.add_parser('import', help='Import callouts')
 calloutsImportParser.add_argument('asset_short_uuid', type=str, metavar='asset_short_uuid', help='A short uuid or URL for an existing asset. If the asset cannot be found, an error message will be printed.')
@@ -299,7 +301,7 @@ def importCallouts(args):
 def exportCallouts(args):
   nirac = getNiraClient(args)
 
-  callouts = nirac.exportCallouts(getShortUuidFromPossibleUrl(args.asset_short_uuid), args.format)
+  callouts = nirac.exportCallouts(getShortUuidFromPossibleUrl(args.asset_short_uuid), args.format, args.coordsys, args.include)
 
   def saveToFile(content, file_name):
     with open(file_name, 'w') as file:

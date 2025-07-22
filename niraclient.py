@@ -53,7 +53,7 @@ from requests.adapters import HTTPAdapter
 
 http = requests.Session()
 from requests.packages.urllib3.util.retry import Retry
-retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 401, 413, 429, 500, 501, 502, 503, 504 ])
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 401, 413, 429, 501, 502, 503, 504 ])
 
 http.mount('http://', HTTPAdapter(max_retries=retries))
 http.mount('https://', HTTPAdapter(max_retries=retries))
@@ -549,10 +549,10 @@ class NiraClient:
 
     return r
 
-  def exportCallouts(self, shortAssetUuid, format='json'):
+  def exportCallouts(self, shortAssetUuid, format='json', coordsys='latlong', include='pointcallouts,polylinecallouts,photocallouts'):
     self.authorize()
 
-    exportCalloutsEndpoint = self.url + "api/assets/{suuid}/callouts/export?format={format}".format(suuid = shortAssetUuid, format = format)
+    exportCalloutsEndpoint = self.url + "api/assets/{suuid}/callouts/export?format={format}&coordsys={coordsys}&include={include}".format(suuid = shortAssetUuid, format = format, coordsys = coordsys, include = include)
 
     r = http.get(url = exportCalloutsEndpoint, headers=self.headerParams)
     r.raise_for_status()
